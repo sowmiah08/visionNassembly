@@ -1,0 +1,144 @@
+<?xml version="1.0"?>
+<robot name="so101_scene" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:include filename="$(find so101_description)/urdf/so101_new_calib.urdf"/>
+
+  <xacro:property name="table_x"     value="1.0"/>
+  <xacro:property name="table_y"     value="0.6"/>
+  <xacro:property name="table_thick" value="0.02"/>
+  <xacro:property name="table_top_z" value="0.75"/>
+  <xacro:property name="leg_radius"  value="0.02"/>
+  <xacro:property name="leg_inset"   value="0.03"/>
+  <xacro:property name="leg_length"  value="${table_top_z - table_thick}"/>
+
+  <xacro:property name="robot_corner_x" value="0.35"/>
+  <xacro:property name="robot_corner_y" value="0.20"/>
+  <xacro:property name="robot_yaw"      value="${pi}"/>
+
+  <xacro:property name="pipe_radius"   value="0.02"/>
+  <xacro:property name="pipe_length"   value="0.80"/>
+  <xacro:property name="pipe_offset_x" value="0.10"/>
+
+  <xacro:property name="cam_pitch" value="${pi/4}"/>
+  <xacro:property name="cam_yaw"   value="${pi}"/>
+
+  <material name="wood">
+    <color rgba="0.72 0.52 0.30 1.0"/>
+  </material>
+  <material name="metal">
+    <color rgba="0.40 0.40 0.42 1.0"/>
+  </material>
+  <material name="realsense_black">
+    <color rgba="0.10 0.10 0.10 1.0"/>
+  </material>
+
+  <link name="world"/>
+
+  <link name="table_link">
+    <visual>
+      <origin xyz="0 0 ${-table_thick/2}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${table_x} ${table_y} ${table_thick}"/>
+      </geometry>
+      <material name="wood"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 ${-table_thick/2}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${table_x} ${table_y} ${table_thick}"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="world_to_table" type="fixed">
+    <parent link="world"/>
+    <child link="table_link"/>
+    <origin xyz="0 0 ${table_top_z}" rpy="0 0 0"/>
+  </joint>
+
+  <xacro:macro name="table_leg" params="name x y">
+    <link name="${name}">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${leg_radius}" length="${leg_length}"/>
+        </geometry>
+        <material name="wood"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${leg_radius}" length="${leg_length}"/>
+        </geometry>
+      </collision>
+    </link>
+    <joint name="table_to_${name}" type="fixed">
+      <parent link="table_link"/>
+      <child link="${name}"/>
+      <origin xyz="${x} ${y} ${-table_thick - leg_length/2}" rpy="0 0 0"/>
+    </joint>
+  </xacro:macro>
+
+  <xacro:table_leg name="leg_px_py" x="${ table_x/2 - leg_inset}" y="${ table_y/2 - leg_inset}"/>
+  <xacro:table_leg name="leg_px_ny" x="${ table_x/2 - leg_inset}" y="${-table_y/2 + leg_inset}"/>
+  <xacro:table_leg name="leg_nx_py" x="${-table_x/2 + leg_inset}" y="${ table_y/2 - leg_inset}"/>
+  <xacro:table_leg name="leg_nx_ny" x="${-table_x/2 + leg_inset}" y="${-table_y/2 + leg_inset}"/>
+
+  <joint name="table_to_robot" type="fixed">
+    <parent link="table_link"/>
+    <child link="base_link"/>
+    <origin xyz="${robot_corner_x} ${robot_corner_y} 0" rpy="0 0 ${robot_yaw}"/>
+  </joint>
+
+  <link name="pipe_link">
+    <visual>
+      <origin xyz="0 0 ${pipe_length/2}" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="${pipe_radius}" length="${pipe_length}"/>
+      </geometry>
+      <material name="metal"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 ${pipe_length/2}" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="${pipe_radius}" length="${pipe_length}"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="table_to_pipe" type="fixed">
+    <parent link="table_link"/>
+    <child link="pipe_link"/>
+    <origin xyz="${robot_corner_x + pipe_offset_x} ${robot_corner_y} 0" rpy="0 0 0"/>
+  </joint>
+
+  <link name="camera_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.025 0.090 0.025"/>
+      </geometry>
+      <material name="realsense_black"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.025 0.090 0.025"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="pipe_to_camera" type="fixed">
+    <parent link="pipe_link"/>
+    <child link="camera_link"/>
+    <origin xyz="0 0 ${pipe_length}" rpy="0 ${cam_pitch} ${cam_yaw}"/>
+  </joint>
+
+  <link name="camera_optical_frame"/>
+  <joint name="camera_to_optical" type="fixed">
+    <parent link="camera_link"/>
+    <child link="camera_optical_frame"/>
+    <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
+  </joint>
+
+</robot>

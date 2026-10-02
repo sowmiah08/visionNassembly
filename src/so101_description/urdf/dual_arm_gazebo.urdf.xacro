@@ -1,0 +1,340 @@
+<?xml version="1.0"?>
+<robot name="so101_dual_arm" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Include already-prefixed arm fragments -->
+  <xacro:include filename="$(find so101_description)/urdf/so101_left_arm.urdf.fragment"/>
+  <xacro:include filename="$(find so101_description)/urdf/so101_right_arm.urdf.fragment"/>
+
+  <!-- ================= TABLE ================= -->
+  <!-- x = long side = 100 cm -->
+  <!-- y = short side = 60 cm -->
+  <xacro:property name="table_x"     value="1.0"/>
+  <xacro:property name="table_y"     value="0.5"/>
+  <xacro:property name="table_thick" value="0.01"/>
+  <xacro:property name="table_top_z" value="0.76"/>
+
+  <xacro:property name="leg_radius"  value="0.01"/>
+  <xacro:property name="leg_inset"   value="0.03"/>
+  <xacro:property name="leg_length"  value="${table_top_z - table_thick}"/>
+
+  <!-- ================= ROBOTS =================== -->
+  <xacro:property name="robot_y"       value="${table_y/2}"/>
+  <xacro:property name="robot_left_x"  value="-0.25"/>
+  <xacro:property name="robot_right_x" value="0.25"/>
+  <xacro:property name="robot_yaw"     value="${-pi/2}"/>
+
+  <!-- ================= CAMERA ================= -->
+  <xacro:property name="pipe_radius" value="0.02"/>
+  <xacro:property name="pipe_length" value="0.65"/>
+
+  <xacro:property name="pipe_x" value="0.0"/>
+  <xacro:property name="pipe_y" value="${robot_y}"/>
+
+  <xacro:property name="cam_pitch" value="${pi/3}"/>
+  <xacro:property name="cam_yaw"   value="${-pi/2}"/>
+
+  <!-- ================= TOP SHELF ================= -->
+  <xacro:property name="shelf_x" value="1.0"/>
+  <xacro:property name="shelf_y" value="0.17"/>
+  <xacro:property name="shelf_thick" value="0.01"/>
+  <xacro:property name="shelf_gap" value="0.12"/>
+
+  <xacro:property name="pillar_x" value="0.07"/>
+  <xacro:property name="pillar_y" value="0.14"/>
+  <xacro:property name="pillar_z" value="0.12"/>
+
+  <!-- opposite side of robots -->
+  <xacro:property name="shelf_y_pos" value="${-table_y/2 + shelf_y/2}"/>
+
+  <!-- ================= MATERIALS ================= -->
+  <material name="wood">
+    <color rgba="0.72 0.52 0.30 1.0"/>
+  </material>
+
+  <material name="metal">
+    <color rgba="0.40 0.40 0.42 1.0"/>
+  </material>
+
+  <material name="camera_black">
+    <color rgba="0.10 0.10 0.10 1.0"/>
+  </material>
+
+  <material name="3d_printed">
+    <color rgba="1.0 0.82 0.12 1.0"/>
+  </material>
+
+  <material name="sts3215">
+    <color rgba="0.1 0.1 0.1 1.0"/>
+  </material>
+
+  <!-- ================= WORLD ================= -->
+  <link name="world"/>
+
+  <!-- ================= TABLE ================= -->
+  <link name="table_link">
+    <visual>
+      <origin xyz="0 0 ${-table_thick/2}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${table_x} ${table_y} ${table_thick}"/>
+      </geometry>
+      <material name="wood"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 ${-table_thick/2}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${table_x} ${table_y} ${table_thick}"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="world_to_table" type="fixed">
+    <parent link="world"/>
+    <child link="table_link"/>
+    <origin xyz="0 0 ${table_top_z}" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ================= TABLE LEGS ================= -->
+  <xacro:macro name="table_leg" params="name x y">
+
+    <link name="${name}">
+      <visual>
+        <geometry>
+          <cylinder radius="${leg_radius}" length="${leg_length}"/>
+        </geometry>
+        <material name="wood"/>
+      </visual>
+
+      <collision>
+        <geometry>
+          <cylinder radius="${leg_radius}" length="${leg_length}"/>
+        </geometry>
+      </collision>
+    </link>
+
+    <joint name="joint_${name}" type="fixed">
+      <parent link="table_link"/>
+      <child link="${name}"/>
+      <origin xyz="${x} ${y} ${-table_thick - leg_length/2}" rpy="0 0 0"/>
+    </joint>
+
+  </xacro:macro>
+
+  <xacro:table_leg name="leg1" x="0.47"  y="0.24"/>
+  <xacro:table_leg name="leg2" x="0.47"  y="-0.24"/>
+  <xacro:table_leg name="leg3" x="-0.47" y="0.24"/>
+  <xacro:table_leg name="leg4" x="-0.47" y="-0.24"/>
+
+
+  <!-- ================= TOP SHELF ================= -->
+  <link name="upper_shelf_link">
+    <visual>
+      <origin xyz="0 -0.01 ${shelf_gap + shelf_thick/2}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${shelf_x} ${shelf_y} ${shelf_thick}"/>
+      </geometry>
+      <material name="wood"/>
+    </visual>
+    <collision>
+      <origin xyz="0 -0.01 ${shelf_gap + shelf_thick/2}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${shelf_x} ${shelf_y} ${shelf_thick}"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="table_to_upper_shelf" type="fixed">
+    <parent link="table_link"/>
+    <child link="upper_shelf_link"/>
+    <origin xyz="0 ${shelf_y_pos} 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ================= PILLARS ================= -->
+  <link name="pillar_left">
+    <visual>
+      <origin xyz="0 0 ${pillar_z/2}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${pillar_x} ${pillar_y} ${pillar_z}"/>
+      </geometry>
+      <material name="wood"/>
+    </visual>
+  </link>
+
+  <joint name="pillar_left_joint" type="fixed">
+    <parent link="table_link"/>
+    <child link="pillar_left"/>
+    <origin xyz="-0.465 ${-table_y/2 + pillar_y/2} 0" rpy="0 0 0"/>
+  </joint>
+
+  <link name="pillar_right">
+    <visual>
+      <origin xyz="0 0 ${pillar_z/2}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${pillar_x} ${pillar_y} ${pillar_z}"/>
+      </geometry>
+      <material name="wood"/>
+    </visual>
+  </link>
+
+  <joint name="pillar_right_joint" type="fixed">
+    <parent link="table_link"/>
+    <child link="pillar_right"/>
+    <origin xyz="0.465 ${-table_y/2 + pillar_y/2} 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ================= LEFT ARM ================= -->
+  <joint name="table_to_left_robot" type="fixed">
+    <parent link="table_link"/>
+    <child link="left_base_link"/>
+    <origin xyz="${robot_left_x} ${robot_y} 0" rpy="0 0 ${robot_yaw}"/>
+  </joint>
+
+  <!-- ================= RIGHT ARM ================= -->
+  <joint name="table_to_right_robot" type="fixed">
+    <parent link="table_link"/>
+    <child link="right_base_link"/>
+    <origin xyz="${robot_right_x} ${robot_y} 0" rpy="0 0 ${robot_yaw}"/>
+  </joint>
+
+<!-- ================= CAMERA POLE ================= -->
+  <link name="pipe_link">
+    <visual>
+      <origin xyz="0 0 ${pipe_length/2}" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.04 0.04 ${pipe_length}"/>
+      </geometry>
+      <material name="metal"/>
+    </visual>
+
+    <collision>
+      <origin xyz="0 0 ${pipe_length/2}" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.04 0.04 ${pipe_length}"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="table_to_pipe" type="fixed">
+    <parent link="table_link"/>
+    <child link="pipe_link"/>
+    <origin xyz="${pipe_x} ${pipe_y} 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ================= CAMERA MOUNT ARM ================= -->
+
+  <link name="camera_mount_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.14 0.015 0.05"/>
+      </geometry>
+      <material name="metal"/>
+    </visual>
+
+    <collision>
+      <origin xyz="0.06 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.12 0.015 0.015"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="pipe_to_mount" type="fixed">
+    <parent link="pipe_link"/>
+    <child link="camera_mount_link"/>
+    <origin xyz="0 0 ${pipe_length}" rpy="0 0 0"/>
+  </joint>
+
+
+  <!-- ================= CAMERA ================= -->
+  <link name="camera_link">
+    <visual>
+      <geometry>
+        <box size="0.025 0.090 0.025"/>
+      </geometry>
+      <material name="camera_black"/>
+    </visual>
+
+    <collision>
+      <geometry>
+        <box size="0.025 0.090 0.025"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="mount_to_camera" type="fixed">
+    <parent link="camera_mount_link"/>
+    <child link="camera_link"/>
+    <origin xyz="0 -0.015 0" rpy="0 ${cam_pitch} ${cam_yaw}"/>
+  </joint>
+
+  <!-- ================= OPTICAL FRAME ================= -->  
+  <link name="camera_optical_frame"/>  
+  
+  <joint name="camera_to_optical" type="fixed">    
+    <parent link="camera_link"/>    
+    <child link="camera_optical_frame"/>    
+    <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>  
+  </joint>
+
+  <!-- ================= ROS2_CONTROL ================ -->
+  <xacro:macro name="position_joint" params="name">
+    <joint name="${name}">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+  </xacro:macro>
+
+  <ros2_control name="GazeboSimSystem" type="system">
+    <hardware>
+      <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+    </hardware>
+
+    <xacro:position_joint name="left_shoulder_pan"/>
+    <xacro:position_joint name="left_shoulder_lift"/>
+    <xacro:position_joint name="left_elbow_flex"/>
+    <xacro:position_joint name="left_wrist_flex"/>
+    <xacro:position_joint name="left_wrist_roll"/>
+    <xacro:position_joint name="left_gripper"/>
+
+    <xacro:position_joint name="right_shoulder_pan"/>
+    <xacro:position_joint name="right_shoulder_lift"/>
+    <xacro:position_joint name="right_elbow_flex"/>
+    <xacro:position_joint name="right_wrist_flex"/>
+    <xacro:position_joint name="right_wrist_roll"/>
+    <xacro:position_joint name="right_gripper"/>
+  </ros2_control>
+
+  <!-- ================= GAZEBO_PLUGINS ================ -->
+  <gazebo reference="camera_link">
+    <sensor name="rgb_camera" type="camera">
+      <update_rate>30</update_rate>
+      <camera>
+        <horizontal_fov>1.57</horizontal_fov>
+        <image><width>640</width><height>480</height></image>
+        <clip><near>0.05</near><far>5.0</far></clip>
+      </camera>
+      <always_on>1</always_on>
+      <visualize>true</visualize>
+    </sensor>
+
+    <sensor name="depth_camera" type="depth_camera">
+      <update_rate>30</update_rate>
+      <camera>
+        <horizontal_fov>1.57</horizontal_fov>
+        <image><width>640</width><height>480</height></image>
+        <clip><near>0.1</near><far>5.0</far></clip>
+      </camera>
+      <always_on>1</always_on>
+    </sensor>
+  </gazebo>
+
+  <gazebo>
+    <plugin filename="libgz_ros2_control-system.so"
+            name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+      <parameters>$(find so101_description)/config/controllers.yaml</parameters>
+    </plugin>
+  </gazebo>
+
+
+</robot>

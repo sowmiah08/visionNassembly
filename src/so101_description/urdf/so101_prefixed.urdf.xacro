@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:macro name="so101_arm" params="prefix parent_link xyz rpy">
+
+    <!-- All links prefixed -->
+    <link name="${prefix}base_link">
+      <!-- copy everything from so101_new_calib base_link here -->
+    </link>
+
+    <!-- ... all other links with ${prefix} ... -->
+
+    <!-- All joints prefixed -->
+    <joint name="${prefix}shoulder_pan" type="revolute">
+      <parent link="${prefix}base_link"/>
+      <child link="${prefix}shoulder_link"/>
+      <!-- ... -->
+    </joint>
+
+    <!-- Mount joint connecting to parent (table) -->
+    <joint name="${prefix}mount_joint" type="fixed">
+      <parent link="${parent_link}"/>
+      <child link="${prefix}base_link"/>
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+    </joint>
+
+  </xacro:macro>
+
+</robot>

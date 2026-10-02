@@ -1,0 +1,49 @@
+
+# ROS 2 / colcon generated directories
+build/
+install/
+log/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Python virtual environments
+.venv/
+venv/
+env/
+
+# ROS 2 generated files and recordings
+*.bag
+*.db3
+*.mcap
+rosbag2_*/
+
+# Generated build and temporary files
+*.tmp
+*.swp
+*.bak
+
+# IDE settings
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Secrets and local environment variables
+.env
+.env.*
+!.env.example
+
+# Large model weights (uncomment if you don't want model files in Git)
+# *.pt
+# *.pth
+# *.onnx
+# *.engine
