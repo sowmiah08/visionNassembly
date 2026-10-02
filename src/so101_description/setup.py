@@ -59,6 +59,12 @@ setup(
         (
             'share/' + package_name + '/config',
             glob('config/*.yaml')
+        ),
+
+    # saved RViz configs
+        (
+            'share/' + package_name + '/rviz',
+            glob('rviz/*.rviz')
         )
     ],
 

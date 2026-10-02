@@ -5,12 +5,8 @@
   proven in dual_arm_final.urdf.xacro, extended with:
     - wrist-camera-equipped arm fragments (so101_left_arm_camera /
       so101_right_arm_camera) instead of the plain ones
-    - a shared central assembly area with the sole manipulable object pair:
-      a 4-pin plug and its matching 4-pocket socket
-
-  The earlier single-peg/hole-plate assembly setup (fixture, base plate,
-  peg, parts tray) still exists, just moved out of the active workcell into
-  dual_arm_workcell_peghole.urdf.xacro so it's not lost.
+    - a shared central assembly area: parts tray, assembly fixture, base
+      plate with a real cylindrical hole, and a peg sized to fit it
 
   For the Gazebo Harmonic / ros2_control version, see
   dual_arm_workcell_gazebo.urdf.xacro.
@@ -21,7 +17,7 @@
   <xacro:include filename="$(find so101_description)/urdf/so101_left_arm_camera.urdf.fragment"/>
   <xacro:include filename="$(find so101_description)/urdf/so101_right_arm_camera.urdf.fragment"/>
 
-  <!-- Modular assembly-task object macros (only plug + socket used here) -->
+  <!-- Modular assembly-task object macros (peg, base plate w/ hole, fixture, tray) -->
   <xacro:include filename="$(find so101_description)/urdf/assembly_objects.urdf.xacro"/>
 
   <!-- ================= TABLE (industrial aluminum-extrusion bench) ================= -->
@@ -52,18 +48,22 @@
   <xacro:property name="gantry_post_height" value="0.55"/>
   <xacro:property name="gantry_post_x"      value="0.46"/>
 
-  <!-- pitch=85deg: 5deg off straight-down (was 75deg/15deg, 60deg/30deg) -->
-  <xacro:property name="cam_pitch" value="${pi*85/180}"/>
+  <xacro:property name="cam_pitch" value="${pi/3}"/>
   <xacro:property name="cam_yaw"   value="${-pi/2}"/>
 
   <!-- ================= ASSEMBLY AREA ================= -->
   <!-- Central area between the two arm bases (both at y = robot_y),
-       reachable by both. The only manipulable objects are the 4-pin plug
-       and socket: the single-peg/hole-plate setup now lives separately
-       in dual_arm_workcell_peghole.urdf.xacro. -->
-  <xacro:property name="socket_x" value="0.0"/>
+       reachable by both. -->
+  <xacro:property name="fixture_x" value="0.0"/>
+  <xacro:property name="fixture_y" value="0.08"/>
+  <xacro:property name="tray_x"    value="-0.17"/>
+  <xacro:property name="tray_y"    value="0.08"/>
+
+  <!-- 4-pin plug/socket pair, clear of the fixture/tray/peg above and well
+       short of the right arm base (x=0.25) -->
+  <xacro:property name="socket_x" value="0.18"/>
   <xacro:property name="socket_y" value="0.08"/>
-  <xacro:property name="plug_x"   value="0.0"/>
+  <xacro:property name="plug_x"   value="0.18"/>
   <xacro:property name="plug_y"   value="0.16"/>
 
   <!-- ================= MATERIALS ================= -->
@@ -324,6 +324,29 @@
     <child link="camera_depth_optical_frame"/>
     <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
   </joint>
+
+  <!-- ================= ASSEMBLY FIXTURE + BASE PLATE ================= -->
+  <xacro:assembly_fixture name="assembly_fixture" parent="table_link"
+    xyz="${fixture_x} ${fixture_y} 0" rpy="0 0 0"/>
+
+  <xacro:base_plate_with_hole name="base_plate" parent="assembly_fixture_link"
+    xyz="0 0 0.006" rpy="0 0 0"/>
+
+  <!-- Peg sized to fit the plate's 0.012 m hole radius, resting beside the
+       fixture ready to be inserted. -->
+  <xacro:peg name="assembly_peg" parent="table_link"
+    xyz="${fixture_x + 0.09} ${fixture_y} 0" rpy="0 0 0"/>
+
+  <!-- ================= PARTS TRAY ================= -->
+  <xacro:parts_tray name="parts_tray" parent="table_link"
+    xyz="${tray_x} ${tray_y} 0" rpy="0 0 0"/>
+
+  <!-- Spare parts sitting in the tray, lying on their side -->
+  <xacro:peg name="spare_peg_1" parent="parts_tray_link"
+    xyz="-0.03 0.02 0.013" rpy="0 ${pi/2} 0" radius="0.007" length="0.035"/>
+
+  <xacro:peg name="spare_peg_2" parent="parts_tray_link"
+    xyz="0.02 -0.015 0.013" rpy="0 ${pi/2} ${pi/4}" radius="0.007" length="0.035"/>
 
   <!-- ================= 4-PIN PLUG / SOCKET ================= -->
   <!-- Socket fixed to the table; plug sits loose nearby, pins up, ready to

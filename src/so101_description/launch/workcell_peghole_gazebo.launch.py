@@ -13,7 +13,7 @@ def generate_launch_description():
     xacro_file = os.path.join(
         pkg_path,
         'urdf',
-        'dual_arm_workcell_gazebo.urdf.xacro'
+        'dual_arm_workcell_peghole_gazebo.urdf.xacro'
     )
 
     world_file = os.path.join(
@@ -100,7 +100,7 @@ def generate_launch_description():
             executable='create',
             arguments=[
                 '-topic', 'robot_description',
-                '-name', 'dual_arm_workcell',
+                '-name', 'dual_arm_workcell_peghole',
                 '-z', '0.0',
             ],
             output='screen'

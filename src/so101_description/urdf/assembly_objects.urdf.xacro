@@ -25,6 +25,18 @@
     <color rgba="0.15 0.35 0.65 1.0"/>
   </material>
 
+  <material name="connector_metal_plug">
+    <color rgba="0.85 0.42 0.10 1.0"/>
+  </material>
+
+  <material name="connector_metal_socket">
+    <color rgba="0.62 0.30 0.06 1.0"/>
+  </material>
+
+  <material name="connector_knob_brass">
+    <color rgba="0.80 0.62 0.22 1.0"/>
+  </material>
+
   <!-- ================= PEG ================= -->
   <!-- Cylindrical peg. Link origin is at the bottom face center, so placing
        the parent joint's xyz at a surface point rests the peg on it. -->
@@ -255,6 +267,244 @@
         <origin xyz="0 ${-tray_y/2 + wall_t/2} ${tray_z/2}" rpy="0 0 0"/>
         <geometry>
           <box size="${tray_x} ${wall_t} ${tray_z}"/>
+        </geometry>
+      </collision>
+    </link>
+
+    <joint name="${parent}_to_${name}" type="fixed">
+      <parent link="${parent}"/>
+      <child link="${name}_link"/>
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+    </joint>
+  </xacro:macro>
+
+  <!-- ================= 4-PIN PLUG ================= -->
+  <!-- Rectangular connector body with 4 cylindrical pins in a 2x2 pattern,
+       topped with a door-knob-style brass grip (rosette + neck + round
+       head), built entirely from primitives (no mesh needed: protrusions
+       like pins/knobs are just cylinders/spheres, unlike a hole which needs
+       real mesh geometry). Link origin is at the pins' bottom tips, so
+       placing the parent joint's xyz at a surface point rests the pins
+       flush on it; the body sits above, pins pointing down, knob sticking
+       up. Default pin radius (0.005) pairs with the socket's 0.007 pocket
+       radius: 2mm clearance per side. -->
+  <xacro:macro name="plug" params="name parent xyz rpy
+                body_x:=0.05 body_y:=0.05 body_z:=0.012
+                pin_radius:=0.005 pin_length:=0.02
+                pitch_x:=0.03 pitch_y:=0.03
+                knob_rosette_radius:=0.016 knob_rosette_height:=0.004
+                knob_neck_radius:=0.006 knob_neck_height:=0.012
+                knob_head_radius:=0.014
+                material:=connector_metal_plug pin_material:=peg_steel
+                knob_material:=connector_knob_brass">
+    <link name="${name}_link">
+      <inertial>
+        <origin xyz="0 0 ${pin_length + body_z/2}" rpy="0 0 0"/>
+        <mass value="0.03"/>
+        <inertia ixx="1e-5" ixy="0" ixz="0" iyy="1e-5" iyz="0" izz="1e-5"/>
+      </inertial>
+
+      <visual>
+        <origin xyz="0 0 ${pin_length + body_z/2}" rpy="0 0 0"/>
+        <geometry>
+          <box size="${body_x} ${body_y} ${body_z}"/>
+        </geometry>
+        <material name="${material}"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 ${pin_length + body_z/2}" rpy="0 0 0"/>
+        <geometry>
+          <box size="${body_x} ${body_y} ${body_z}"/>
+        </geometry>
+      </collision>
+
+      <!-- Door-knob-style grip on top: a wide round rosette (mounting
+           plate) flush on the body, a narrow neck rising from it, and a
+           round bulbous head on the neck: the classic knob silhouette,
+           rather than a plain cylinder+dome. -->
+      <visual>
+        <origin xyz="0 0 ${pin_length + body_z + knob_rosette_height/2}" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${knob_rosette_radius}" length="${knob_rosette_height}"/>
+        </geometry>
+        <material name="${knob_material}"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 ${pin_length + body_z + knob_rosette_height/2}" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${knob_rosette_radius}" length="${knob_rosette_height}"/>
+        </geometry>
+      </collision>
+
+      <visual>
+        <origin xyz="0 0 ${pin_length + body_z + knob_rosette_height + knob_neck_height/2}" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${knob_neck_radius}" length="${knob_neck_height}"/>
+        </geometry>
+        <material name="${knob_material}"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 ${pin_length + body_z + knob_rosette_height + knob_neck_height/2}" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${knob_neck_radius}" length="${knob_neck_height}"/>
+        </geometry>
+      </collision>
+
+      <visual>
+        <origin xyz="0 0 ${pin_length + body_z + knob_rosette_height + knob_neck_height}" rpy="0 0 0"/>
+        <geometry>
+          <sphere radius="${knob_head_radius}"/>
+        </geometry>
+        <material name="${knob_material}"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 ${pin_length + body_z + knob_rosette_height + knob_neck_height}" rpy="0 0 0"/>
+        <geometry>
+          <sphere radius="${knob_head_radius}"/>
+        </geometry>
+      </collision>
+
+      <!-- 4 pins in a 2x2 pattern at (+-pitch_x/2, +-pitch_y/2) -->
+      <visual>
+        <origin xyz="${pitch_x/2} ${pitch_y/2} ${pin_length/2}" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${pin_radius}" length="${pin_length}"/>
+        </geometry>
+        <material name="${pin_material}"/>
+      </visual>
+      <collision>
+        <origin xyz="${pitch_x/2} ${pitch_y/2} ${pin_length/2}" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${pin_radius}" length="${pin_length}"/>
+        </geometry>
+      </collision>
+
+      <visual>
+        <origin xyz="${pitch_x/2} ${-pitch_y/2} ${pin_length/2}" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${pin_radius}" length="${pin_length}"/>
+        </geometry>
+        <material name="${pin_material}"/>
+      </visual>
+      <collision>
+        <origin xyz="${pitch_x/2} ${-pitch_y/2} ${pin_length/2}" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${pin_radius}" length="${pin_length}"/>
+        </geometry>
+      </collision>
+
+      <visual>
+        <origin xyz="${-pitch_x/2} ${pitch_y/2} ${pin_length/2}" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${pin_radius}" length="${pin_length}"/>
+        </geometry>
+        <material name="${pin_material}"/>
+      </visual>
+      <collision>
+        <origin xyz="${-pitch_x/2} ${pitch_y/2} ${pin_length/2}" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${pin_radius}" length="${pin_length}"/>
+        </geometry>
+      </collision>
+
+      <visual>
+        <origin xyz="${-pitch_x/2} ${-pitch_y/2} ${pin_length/2}" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${pin_radius}" length="${pin_length}"/>
+        </geometry>
+        <material name="${pin_material}"/>
+      </visual>
+      <collision>
+        <origin xyz="${-pitch_x/2} ${-pitch_y/2} ${pin_length/2}" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${pin_radius}" length="${pin_length}"/>
+        </geometry>
+      </collision>
+    </link>
+
+    <joint name="${parent}_to_${name}" type="fixed">
+      <parent link="${parent}"/>
+      <child link="${name}_link"/>
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+    </joint>
+  </xacro:macro>
+
+  <!-- ================= 4-HOLE SOCKET ================= -->
+  <!-- Matching socket for the 4-pin plug: a 0.06 x 0.06 x 0.025 m block with
+       four genuine blind pockets (real mesh geometry, generated by
+       meshes/generate_socket_cell.py), one per pin. Built from four copies
+       of the same quarter-cell mesh tiled side by side: since each
+       0.03 x 0.03 cell has its pocket centered within itself, four
+       untouched copies at the four quadrant offsets tile seamlessly into
+       the full block with no extra meshing work. Pockets are 0.022 m deep
+       with a 0.003 m solid floor, closed (not through-holes) for visual
+       and physical realism. Link origin is at the block's bottom face
+       center. The same mesh is used for collision, fine here since the
+       socket is mounted via a fixed joint (static). -->
+  <xacro:macro name="socket" params="name parent xyz rpy material:=connector_metal_socket">
+    <xacro:property name="cell_half" value="0.015"/>
+
+    <link name="${name}_link">
+      <inertial>
+        <origin xyz="0 0 0.0125" rpy="0 0 0"/>
+        <mass value="0.08"/>
+        <inertia ixx="2e-5" ixy="0" ixz="0" iyy="2e-5" iyz="0" izz="3e-5"/>
+      </inertial>
+
+      <!-- 4 quarter-cells tiled at the (+-cell_half, +-cell_half) quadrant offsets -->
+      <visual>
+        <origin xyz="${cell_half} ${cell_half} 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://so101_description/meshes/socket_cell_blind_hole.stl"/>
+        </geometry>
+        <material name="${material}"/>
+      </visual>
+      <collision>
+        <origin xyz="${cell_half} ${cell_half} 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://so101_description/meshes/socket_cell_blind_hole.stl"/>
+        </geometry>
+      </collision>
+
+      <visual>
+        <origin xyz="${cell_half} ${-cell_half} 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://so101_description/meshes/socket_cell_blind_hole.stl"/>
+        </geometry>
+        <material name="${material}"/>
+      </visual>
+      <collision>
+        <origin xyz="${cell_half} ${-cell_half} 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://so101_description/meshes/socket_cell_blind_hole.stl"/>
+        </geometry>
+      </collision>
+
+      <visual>
+        <origin xyz="${-cell_half} ${cell_half} 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://so101_description/meshes/socket_cell_blind_hole.stl"/>
+        </geometry>
+        <material name="${material}"/>
+      </visual>
+      <collision>
+        <origin xyz="${-cell_half} ${cell_half} 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://so101_description/meshes/socket_cell_blind_hole.stl"/>
+        </geometry>
+      </collision>
+
+      <visual>
+        <origin xyz="${-cell_half} ${-cell_half} 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://so101_description/meshes/socket_cell_blind_hole.stl"/>
+        </geometry>
+        <material name="${material}"/>
+      </visual>
+      <collision>
+        <origin xyz="${-cell_half} ${-cell_half} 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://so101_description/meshes/socket_cell_blind_hole.stl"/>
         </geometry>
       </collision>
     </link>

@@ -344,8 +344,12 @@
   </transmission>
 
   <!-- Joint from wrist to gripper -->
+  <!-- Pitch corrected to 0.0486795 to match the original single-arm
+       so101_new_calib_camera.urdf / left arm calibration: the stray
+       -1.34385 inherited from so101_right_arm.urdf.fragment threw off the
+       wrist (and wrist camera) alignment on this arm. -->
   <joint name="right_wrist_roll" type="revolute">
-    <origin xyz="5.55112e-17 -0.0611 0.0181" rpy="1.5708 -1.34385 3.14159"/>
+    <origin xyz="5.55112e-17 -0.0611 0.0181" rpy="1.5708 0.0486795 3.14159"/>
     <parent link="right_wrist_link"/>
     <child link="right_gripper_link"/>
     <axis xyz="0 0 1"/>

@@ -1,19 +1,15 @@
 <?xml version="1.0"?>
 <!--
-  Dual-arm assembly workcell (display/RViz variant, no ros2_control or
-  Gazebo tags). Built on top of the same table/shelf/overhead-camera layout
-  proven in dual_arm_final.urdf.xacro, extended with:
-    - wrist-camera-equipped arm fragments (so101_left_arm_camera /
-      so101_right_arm_camera) instead of the plain ones
-    - a shared central assembly area with the sole manipulable object pair:
-      a 4-pin plug and its matching 4-pocket socket
+  Dual-arm assembly workcell (Gazebo Harmonic variant): same table, arms,
+  overhead camera and assembly objects as dual_arm_workcell.urdf.xacro, plus
+  ros2_control command/state interfaces and the gz_ros2_control plugin so it
+  can be spawned into Gazebo (mirrors the existing dual_arm_gazebo.urdf.xacro
+  pattern).
 
-  The earlier single-peg/hole-plate assembly setup (fixture, base plate,
-  peg, parts tray) still exists, just moved out of the active workcell into
-  dual_arm_workcell_peghole.urdf.xacro so it's not lost.
-
-  For the Gazebo Harmonic / ros2_control version, see
-  dual_arm_workcell_gazebo.urdf.xacro.
+  The wrist cameras are mounted physically (mesh + link + joint, via the
+  so101_*_arm_camera fragments) but intentionally have no gazebo sensor
+  block yet; only the already-existing overhead camera is wired up as a
+  sensor, to avoid building out a sensor pipeline that hasn't been asked for.
 -->
 <robot name="so101_dual_arm_workcell" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
@@ -21,7 +17,7 @@
   <xacro:include filename="$(find so101_description)/urdf/so101_left_arm_camera.urdf.fragment"/>
   <xacro:include filename="$(find so101_description)/urdf/so101_right_arm_camera.urdf.fragment"/>
 
-  <!-- Modular assembly-task object macros (only plug + socket used here) -->
+  <!-- Modular assembly-task object macros (peg, base plate w/ hole, fixture, tray) -->
   <xacro:include filename="$(find so101_description)/urdf/assembly_objects.urdf.xacro"/>
 
   <!-- ================= TABLE (industrial aluminum-extrusion bench) ================= -->
@@ -42,7 +38,7 @@
   <xacro:property name="lower_shelf_thick" value="0.012"/>
 
   <!-- ================= ROBOTS =================== -->
-  <xacro:property name="robot_y"       value="${(table_y/2) + 0.015}"/>
+  <xacro:property name="robot_y"       value="${table_y/2}"/>
   <xacro:property name="robot_left_x"  value="-0.25"/>
   <xacro:property name="robot_right_x" value="0.25"/>
   <xacro:property name="robot_yaw"     value="${-pi/2}"/>
@@ -52,18 +48,20 @@
   <xacro:property name="gantry_post_height" value="0.55"/>
   <xacro:property name="gantry_post_x"      value="0.46"/>
 
-  <!-- pitch=85deg: 5deg off straight-down (was 75deg/15deg, 60deg/30deg) -->
-  <xacro:property name="cam_pitch" value="${pi*85/180}"/>
+  <xacro:property name="cam_pitch" value="${pi/3}"/>
   <xacro:property name="cam_yaw"   value="${-pi/2}"/>
 
   <!-- ================= ASSEMBLY AREA ================= -->
-  <!-- Central area between the two arm bases (both at y = robot_y),
-       reachable by both. The only manipulable objects are the 4-pin plug
-       and socket: the single-peg/hole-plate setup now lives separately
-       in dual_arm_workcell_peghole.urdf.xacro. -->
-  <xacro:property name="socket_x" value="0.0"/>
+  <xacro:property name="fixture_x" value="0.0"/>
+  <xacro:property name="fixture_y" value="0.08"/>
+  <xacro:property name="tray_x"    value="-0.17"/>
+  <xacro:property name="tray_y"    value="0.08"/>
+
+  <!-- 4-pin plug/socket pair, clear of the fixture/tray/peg above and well
+       short of the right arm base (x=0.25) -->
+  <xacro:property name="socket_x" value="0.18"/>
   <xacro:property name="socket_y" value="0.08"/>
-  <xacro:property name="plug_x"   value="0.0"/>
+  <xacro:property name="plug_x"   value="0.18"/>
   <xacro:property name="plug_y"   value="0.16"/>
 
   <!-- ================= MATERIALS ================= -->
@@ -317,13 +315,33 @@
   </joint>
 
   <!-- ================= OPTICAL FRAME ================= -->
-  <link name="camera_depth_optical_frame"/>
+  <link name="camera_optical_frame"/>
 
   <joint name="camera_to_optical" type="fixed">
     <parent link="camera_link"/>
-    <child link="camera_depth_optical_frame"/>
+    <child link="camera_optical_frame"/>
     <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
   </joint>
+
+  <!-- ================= ASSEMBLY FIXTURE + BASE PLATE ================= -->
+  <xacro:assembly_fixture name="assembly_fixture" parent="table_link"
+    xyz="${fixture_x} ${fixture_y} 0" rpy="0 0 0"/>
+
+  <xacro:base_plate_with_hole name="base_plate" parent="assembly_fixture_link"
+    xyz="0 0 0.006" rpy="0 0 0"/>
+
+  <xacro:peg name="assembly_peg" parent="table_link"
+    xyz="${fixture_x + 0.09} ${fixture_y} 0" rpy="0 0 0"/>
+
+  <!-- ================= PARTS TRAY ================= -->
+  <xacro:parts_tray name="parts_tray" parent="table_link"
+    xyz="${tray_x} ${tray_y} 0" rpy="0 0 0"/>
+
+  <xacro:peg name="spare_peg_1" parent="parts_tray_link"
+    xyz="-0.03 0.02 0.013" rpy="0 ${pi/2} 0" radius="0.007" length="0.035"/>
+
+  <xacro:peg name="spare_peg_2" parent="parts_tray_link"
+    xyz="0.02 -0.015 0.013" rpy="0 ${pi/2} ${pi/4}" radius="0.007" length="0.035"/>
 
   <!-- ================= 4-PIN PLUG / SOCKET ================= -->
   <!-- Socket fixed to the table; plug sits loose nearby, pins up, ready to
@@ -333,5 +351,97 @@
 
   <xacro:plug name="plug" parent="table_link"
     xyz="${plug_x} ${plug_y} 0" rpy="0 0 0"/>
+
+  <!-- ================= ROS2_CONTROL ================ -->
+  <xacro:macro name="position_joint" params="name">
+    <joint name="${name}">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+  </xacro:macro>
+
+  <ros2_control name="GazeboSimSystem" type="system">
+    <hardware>
+      <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+    </hardware>
+
+    <xacro:position_joint name="left_shoulder_pan"/>
+    <xacro:position_joint name="left_shoulder_lift"/>
+    <xacro:position_joint name="left_elbow_flex"/>
+    <xacro:position_joint name="left_wrist_flex"/>
+    <xacro:position_joint name="left_wrist_roll"/>
+    <xacro:position_joint name="left_gripper"/>
+
+    <xacro:position_joint name="right_shoulder_pan"/>
+    <xacro:position_joint name="right_shoulder_lift"/>
+    <xacro:position_joint name="right_elbow_flex"/>
+    <xacro:position_joint name="right_wrist_flex"/>
+    <xacro:position_joint name="right_wrist_roll"/>
+    <xacro:position_joint name="right_gripper"/>
+  </ros2_control>
+
+  <!-- ================= GAZEBO_PLUGINS ================ -->
+  <gazebo reference="camera_link">
+    <sensor name="rgb_camera" type="camera">
+      <topic>overhead_camera/rgb/image_raw</topic>
+      <update_rate>30</update_rate>
+      <camera>
+        <horizontal_fov>1.57</horizontal_fov>
+        <image><width>640</width><height>480</height></image>
+        <clip><near>0.05</near><far>5.0</far></clip>
+      </camera>
+      <always_on>1</always_on>
+      <visualize>true</visualize>
+    </sensor>
+
+    <sensor name="depth_camera" type="depth_camera">
+      <topic>overhead_camera/depth/image_raw</topic>
+      <update_rate>30</update_rate>
+      <camera>
+        <horizontal_fov>1.57</horizontal_fov>
+        <image><width>640</width><height>480</height></image>
+        <clip><near>0.1</near><far>5.0</far></clip>
+      </camera>
+      <always_on>1</always_on>
+    </sensor>
+  </gazebo>
+
+  <!-- Wrist cameras: simple UVC RGB webcams (no depth, matching the real
+       Hex-Nut 32x32 UVC module the mount is sized for). -->
+  <gazebo reference="left_wrist_camera_link">
+    <sensor name="left_wrist_rgb_camera" type="camera">
+      <topic>left_wrist_camera/image_raw</topic>
+      <update_rate>30</update_rate>
+      <camera>
+        <horizontal_fov>1.57</horizontal_fov>
+        <image><width>640</width><height>480</height></image>
+        <clip><near>0.02</near><far>3.0</far></clip>
+      </camera>
+      <always_on>1</always_on>
+      <visualize>true</visualize>
+    </sensor>
+  </gazebo>
+
+  <gazebo reference="right_wrist_camera_link">
+    <sensor name="right_wrist_rgb_camera" type="camera">
+      <topic>right_wrist_camera/image_raw</topic>
+      <update_rate>30</update_rate>
+      <camera>
+        <horizontal_fov>1.57</horizontal_fov>
+        <image><width>640</width><height>480</height></image>
+        <clip><near>0.02</near><far>3.0</far></clip>
+      </camera>
+      <always_on>1</always_on>
+      <visualize>true</visualize>
+    </sensor>
+  </gazebo>
+
+  <gazebo>
+    <plugin filename="libgz_ros2_control-system.so"
+            name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+      <parameters>$(find so101_description)/config/controllers.yaml</parameters>
+    </plugin>
+  </gazebo>
 
 </robot>

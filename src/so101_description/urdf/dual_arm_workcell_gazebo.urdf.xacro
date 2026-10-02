@@ -6,6 +6,11 @@
   can be spawned into Gazebo (mirrors the existing dual_arm_gazebo.urdf.xacro
   pattern).
 
+  The sole manipulable object pair is the 4-pin plug and its matching
+  4-pocket socket. The earlier single-peg/hole-plate setup (fixture, base
+  plate, peg, parts tray) still exists, just moved out of the active
+  workcell into dual_arm_workcell_peghole_gazebo.urdf.xacro.
+
   The wrist cameras are mounted physically (mesh + link + joint, via the
   so101_*_arm_camera fragments) but intentionally have no gazebo sensor
   block yet; only the already-existing overhead camera is wired up as a
@@ -17,20 +22,25 @@
   <xacro:include filename="$(find so101_description)/urdf/so101_left_arm_camera.urdf.fragment"/>
   <xacro:include filename="$(find so101_description)/urdf/so101_right_arm_camera.urdf.fragment"/>
 
-  <!-- Modular assembly-task object macros (peg, base plate w/ hole, fixture, tray) -->
+  <!-- Modular assembly-task object macros (only plug + socket used here) -->
   <xacro:include filename="$(find so101_description)/urdf/assembly_objects.urdf.xacro"/>
 
-  <!-- ================= TABLE ================= -->
+  <!-- ================= TABLE (industrial aluminum-extrusion bench) ================= -->
   <!-- x = long side = 100 cm -->
   <!-- y = short side = 50 cm -->
   <xacro:property name="table_x"     value="1.0"/>
   <xacro:property name="table_y"     value="0.5"/>
-  <xacro:property name="table_thick" value="0.01"/>
+  <xacro:property name="table_thick" value="0.03"/>
+  <xacro:property name="trim_thick"  value="0.006"/>
   <xacro:property name="table_top_z" value="0.76"/>
 
-  <xacro:property name="leg_radius"  value="0.01"/>
-  <xacro:property name="leg_inset"   value="0.03"/>
-  <xacro:property name="leg_length"  value="${table_top_z - table_thick}"/>
+  <xacro:property name="leg_size"    value="0.035"/>
+  <xacro:property name="leg_inset"   value="0.04"/>
+  <xacro:property name="leg_length"  value="${table_top_z - table_thick - trim_thick}"/>
+
+  <xacro:property name="rail_size"         value="0.03"/>
+  <xacro:property name="rail_height"       value="0.12"/>
+  <xacro:property name="lower_shelf_thick" value="0.012"/>
 
   <!-- ================= ROBOTS =================== -->
   <xacro:property name="robot_y"       value="${table_y/2}"/>
@@ -38,42 +48,31 @@
   <xacro:property name="robot_right_x" value="0.25"/>
   <xacro:property name="robot_yaw"     value="${-pi/2}"/>
 
-  <!-- ================= OVERHEAD CAMERA ================= -->
-  <xacro:property name="pipe_radius" value="0.02"/>
-  <xacro:property name="pipe_length" value="0.65"/>
+  <!-- ================= OVERHEAD CAMERA GANTRY ================= -->
+  <xacro:property name="gantry_post_size"   value="0.04"/>
+  <xacro:property name="gantry_post_height" value="0.55"/>
+  <xacro:property name="gantry_post_x"      value="0.46"/>
 
-  <xacro:property name="pipe_x" value="0.0"/>
-  <xacro:property name="pipe_y" value="${robot_y}"/>
-
-  <xacro:property name="cam_pitch" value="${pi/3}"/>
+  <!-- pitch=85deg: 5deg off straight-down (was 75deg/15deg, 60deg/30deg) -->
+  <xacro:property name="cam_pitch" value="${pi*85/180}"/>
   <xacro:property name="cam_yaw"   value="${-pi/2}"/>
 
-  <!-- ================= TOP SHELF ================= -->
-  <xacro:property name="shelf_x" value="1.0"/>
-  <xacro:property name="shelf_y" value="0.17"/>
-  <xacro:property name="shelf_thick" value="0.01"/>
-  <xacro:property name="shelf_gap" value="0.12"/>
-
-  <xacro:property name="pillar_x" value="0.07"/>
-  <xacro:property name="pillar_y" value="0.14"/>
-  <xacro:property name="pillar_z" value="0.12"/>
-
-  <!-- opposite side of robots -->
-  <xacro:property name="shelf_y_pos" value="${-table_y/2 + shelf_y/2}"/>
-
   <!-- ================= ASSEMBLY AREA ================= -->
-  <xacro:property name="fixture_x" value="0.0"/>
-  <xacro:property name="fixture_y" value="0.08"/>
-  <xacro:property name="tray_x"    value="-0.17"/>
-  <xacro:property name="tray_y"    value="0.08"/>
+  <!-- The only manipulable objects are the 4-pin plug and socket: the
+       single-peg/hole-plate setup now lives separately in
+       dual_arm_workcell_peghole_gazebo.urdf.xacro. -->
+  <xacro:property name="socket_x" value="0.0"/>
+  <xacro:property name="socket_y" value="0.08"/>
+  <xacro:property name="plug_x"   value="0.0"/>
+  <xacro:property name="plug_y"   value="0.16"/>
 
   <!-- ================= MATERIALS ================= -->
-  <material name="wood">
-    <color rgba="0.72 0.52 0.30 1.0"/>
+  <material name="bench_top_dark">
+    <color rgba="0.14 0.14 0.15 1.0"/>
   </material>
 
-  <material name="metal">
-    <color rgba="0.40 0.40 0.42 1.0"/>
+  <material name="aluminum_frame">
+    <color rgba="0.72 0.72 0.74 1.0"/>
   </material>
 
   <material name="camera_black">
@@ -91,19 +90,34 @@
   <!-- ================= WORLD ================= -->
   <link name="world"/>
 
-  <!-- ================= TABLE ================= -->
+  <!-- ================= TABLETOP ================= -->
   <link name="table_link">
     <visual>
       <origin xyz="0 0 ${-table_thick/2}" rpy="0 0 0"/>
       <geometry>
         <box size="${table_x} ${table_y} ${table_thick}"/>
       </geometry>
-      <material name="wood"/>
+      <material name="bench_top_dark"/>
     </visual>
     <collision>
       <origin xyz="0 0 ${-table_thick/2}" rpy="0 0 0"/>
       <geometry>
         <box size="${table_x} ${table_y} ${table_thick}"/>
+      </geometry>
+    </collision>
+
+    <!-- Brushed-aluminum edge trim -->
+    <visual>
+      <origin xyz="0 0 ${-table_thick - trim_thick/2}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${table_x + 0.01} ${table_y + 0.01} ${trim_thick}"/>
+      </geometry>
+      <material name="aluminum_frame"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 ${-table_thick - trim_thick/2}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${table_x + 0.01} ${table_y + 0.01} ${trim_thick}"/>
       </geometry>
     </collision>
   </link>
@@ -114,20 +128,18 @@
     <origin xyz="0 0 ${table_top_z}" rpy="0 0 0"/>
   </joint>
 
-  <!-- ================= TABLE LEGS ================= -->
-  <xacro:macro name="table_leg" params="name x y">
-
+  <!-- ================= EXTRUSION LEGS ================= -->
+  <xacro:macro name="bench_leg" params="name x y">
     <link name="${name}">
       <visual>
         <geometry>
-          <cylinder radius="${leg_radius}" length="${leg_length}"/>
+          <box size="${leg_size} ${leg_size} ${leg_length}"/>
         </geometry>
-        <material name="wood"/>
+        <material name="aluminum_frame"/>
       </visual>
-
       <collision>
         <geometry>
-          <cylinder radius="${leg_radius}" length="${leg_length}"/>
+          <box size="${leg_size} ${leg_size} ${leg_length}"/>
         </geometry>
       </collision>
     </link>
@@ -135,71 +147,66 @@
     <joint name="joint_${name}" type="fixed">
       <parent link="table_link"/>
       <child link="${name}"/>
-      <origin xyz="${x} ${y} ${-table_thick - leg_length/2}" rpy="0 0 0"/>
+      <origin xyz="${x} ${y} ${-(table_thick + trim_thick) - leg_length/2}" rpy="0 0 0"/>
     </joint>
-
   </xacro:macro>
 
-  <xacro:table_leg name="leg1" x="0.47"  y="0.24"/>
-  <xacro:table_leg name="leg2" x="0.47"  y="-0.24"/>
-  <xacro:table_leg name="leg3" x="-0.47" y="0.24"/>
-  <xacro:table_leg name="leg4" x="-0.47" y="-0.24"/>
+  <xacro:bench_leg name="leg1" x="${table_x/2 - leg_inset}"  y="${table_y/2 - leg_inset}"/>
+  <xacro:bench_leg name="leg2" x="${table_x/2 - leg_inset}"  y="${-table_y/2 + leg_inset}"/>
+  <xacro:bench_leg name="leg3" x="${-table_x/2 + leg_inset}" y="${table_y/2 - leg_inset}"/>
+  <xacro:bench_leg name="leg4" x="${-table_x/2 + leg_inset}" y="${-table_y/2 + leg_inset}"/>
 
+  <!-- ================= LOWER RAIL FRAME ================= -->
+  <xacro:property name="rail_z"      value="${-table_top_z + rail_height}"/>
+  <xacro:property name="rail_span_x" value="${table_x - 2*leg_inset - leg_size}"/>
+  <xacro:property name="rail_span_y" value="${table_y - 2*leg_inset - leg_size}"/>
 
-  <!-- ================= TOP SHELF ================= -->
-  <link name="upper_shelf_link">
+  <xacro:macro name="bench_rail" params="name x y size_x size_y">
+    <link name="${name}">
+      <visual>
+        <geometry>
+          <box size="${size_x} ${size_y} ${rail_size}"/>
+        </geometry>
+        <material name="aluminum_frame"/>
+      </visual>
+      <collision>
+        <geometry>
+          <box size="${size_x} ${size_y} ${rail_size}"/>
+        </geometry>
+      </collision>
+    </link>
+
+    <joint name="joint_${name}" type="fixed">
+      <parent link="table_link"/>
+      <child link="${name}"/>
+      <origin xyz="${x} ${y} ${rail_z}" rpy="0 0 0"/>
+    </joint>
+  </xacro:macro>
+
+  <xacro:bench_rail name="rail_front" x="0" y="${table_y/2 - leg_inset}"  size_x="${rail_span_x}" size_y="${rail_size}"/>
+  <xacro:bench_rail name="rail_back"  x="0" y="${-table_y/2 + leg_inset}" size_x="${rail_span_x}" size_y="${rail_size}"/>
+  <xacro:bench_rail name="rail_left"  x="${-table_x/2 + leg_inset}" y="0" size_x="${rail_size}" size_y="${rail_span_y}"/>
+  <xacro:bench_rail name="rail_right" x="${table_x/2 - leg_inset}"  y="0" size_x="${rail_size}" size_y="${rail_span_y}"/>
+
+  <!-- ================= LOWER STORAGE SHELF ================= -->
+  <link name="lower_shelf_link">
     <visual>
-      <origin xyz="0 -0.01 ${shelf_gap + shelf_thick/2}" rpy="0 0 0"/>
       <geometry>
-        <box size="${shelf_x} ${shelf_y} ${shelf_thick}"/>
+        <box size="${rail_span_x} ${rail_span_y} ${lower_shelf_thick}"/>
       </geometry>
-      <material name="wood"/>
+      <material name="bench_top_dark"/>
     </visual>
     <collision>
-      <origin xyz="0 -0.01 ${shelf_gap + shelf_thick/2}" rpy="0 0 0"/>
       <geometry>
-        <box size="${shelf_x} ${shelf_y} ${shelf_thick}"/>
+        <box size="${rail_span_x} ${rail_span_y} ${lower_shelf_thick}"/>
       </geometry>
     </collision>
   </link>
 
-  <joint name="table_to_upper_shelf" type="fixed">
+  <joint name="table_to_lower_shelf" type="fixed">
     <parent link="table_link"/>
-    <child link="upper_shelf_link"/>
-    <origin xyz="0 ${shelf_y_pos} 0" rpy="0 0 0"/>
-  </joint>
-
-  <!-- ================= PILLARS ================= -->
-  <link name="pillar_left">
-    <visual>
-      <origin xyz="0 0 ${pillar_z/2}" rpy="0 0 0"/>
-      <geometry>
-        <box size="${pillar_x} ${pillar_y} ${pillar_z}"/>
-      </geometry>
-      <material name="wood"/>
-    </visual>
-  </link>
-
-  <joint name="pillar_left_joint" type="fixed">
-    <parent link="table_link"/>
-    <child link="pillar_left"/>
-    <origin xyz="-0.465 ${-table_y/2 + pillar_y/2} 0" rpy="0 0 0"/>
-  </joint>
-
-  <link name="pillar_right">
-    <visual>
-      <origin xyz="0 0 ${pillar_z/2}" rpy="0 0 0"/>
-      <geometry>
-        <box size="${pillar_x} ${pillar_y} ${pillar_z}"/>
-      </geometry>
-      <material name="wood"/>
-    </visual>
-  </link>
-
-  <joint name="pillar_right_joint" type="fixed">
-    <parent link="table_link"/>
-    <child link="pillar_right"/>
-    <origin xyz="0.465 ${-table_y/2 + pillar_y/2} 0" rpy="0 0 0"/>
+    <child link="lower_shelf_link"/>
+    <origin xyz="0 0 ${rail_z + rail_size/2 + lower_shelf_thick/2}" rpy="0 0 0"/>
   </joint>
 
   <!-- ================= LEFT ARM ================= -->
@@ -216,55 +223,76 @@
     <origin xyz="${robot_right_x} ${robot_y} 0" rpy="0 0 ${robot_yaw}"/>
   </joint>
 
-  <!-- ================= CAMERA POLE ================= -->
-  <link name="pipe_link">
-    <visual>
-      <origin xyz="0 0 ${pipe_length/2}" rpy="0 0 0"/>
-      <geometry>
-        <box size="0.04 0.04 ${pipe_length}"/>
-      </geometry>
-      <material name="metal"/>
-    </visual>
+  <!-- ================= OVERHEAD CAMERA GANTRY ================= -->
+  <xacro:macro name="gantry_post" params="name x">
+    <link name="${name}">
+      <visual>
+        <origin xyz="0 0 ${gantry_post_height/2}" rpy="0 0 0"/>
+        <geometry>
+          <box size="${gantry_post_size} ${gantry_post_size} ${gantry_post_height}"/>
+        </geometry>
+        <material name="aluminum_frame"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 ${gantry_post_height/2}" rpy="0 0 0"/>
+        <geometry>
+          <box size="${gantry_post_size} ${gantry_post_size} ${gantry_post_height}"/>
+        </geometry>
+      </collision>
+    </link>
 
-    <collision>
-      <origin xyz="0 0 ${pipe_length/2}" rpy="0 0 0"/>
+    <joint name="table_to_${name}" type="fixed">
+      <parent link="table_link"/>
+      <child link="${name}"/>
+      <origin xyz="${x} 0 0" rpy="0 0 0"/>
+    </joint>
+  </xacro:macro>
+
+  <xacro:gantry_post name="gantry_post_left"  x="${-gantry_post_x}"/>
+  <xacro:gantry_post name="gantry_post_right" x="${gantry_post_x}"/>
+
+  <link name="gantry_crossbar_link">
+    <visual>
       <geometry>
-        <box size="0.04 0.04 ${pipe_length}"/>
+        <box size="${2*gantry_post_x + gantry_post_size} ${gantry_post_size} ${gantry_post_size}"/>
+      </geometry>
+      <material name="aluminum_frame"/>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="${2*gantry_post_x + gantry_post_size} ${gantry_post_size} ${gantry_post_size}"/>
       </geometry>
     </collision>
   </link>
 
-  <joint name="table_to_pipe" type="fixed">
-    <parent link="table_link"/>
-    <child link="pipe_link"/>
-    <origin xyz="${pipe_x} ${pipe_y} 0" rpy="0 0 0"/>
+  <joint name="post_to_crossbar" type="fixed">
+    <parent link="gantry_post_left"/>
+    <child link="gantry_crossbar_link"/>
+    <origin xyz="${gantry_post_x} 0 ${gantry_post_height}" rpy="0 0 0"/>
   </joint>
 
-  <!-- ================= CAMERA MOUNT ARM ================= -->
-
+  <!-- ================= CAMERA MOUNT BRACKET ================= -->
   <link name="camera_mount_link">
     <visual>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <origin xyz="0 0 -0.025" rpy="0 0 0"/>
       <geometry>
-        <box size="0.14 0.015 0.05"/>
+        <box size="0.03 0.03 0.05"/>
       </geometry>
-      <material name="metal"/>
+      <material name="aluminum_frame"/>
     </visual>
-
     <collision>
-      <origin xyz="0.06 0 0" rpy="0 0 0"/>
+      <origin xyz="0 0 -0.025" rpy="0 0 0"/>
       <geometry>
-        <box size="0.12 0.015 0.015"/>
+        <box size="0.03 0.03 0.05"/>
       </geometry>
     </collision>
   </link>
 
-  <joint name="pipe_to_mount" type="fixed">
-    <parent link="pipe_link"/>
+  <joint name="crossbar_to_mount" type="fixed">
+    <parent link="gantry_crossbar_link"/>
     <child link="camera_mount_link"/>
-    <origin xyz="0 0 ${pipe_length}" rpy="0 0 0"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
-
 
   <!-- ================= OVERHEAD CAMERA ================= -->
   <link name="camera_link">
@@ -285,7 +313,7 @@
   <joint name="mount_to_camera" type="fixed">
     <parent link="camera_mount_link"/>
     <child link="camera_link"/>
-    <origin xyz="0 -0.015 0" rpy="0 ${cam_pitch} ${cam_yaw}"/>
+    <origin xyz="0 0 -0.05" rpy="0 ${cam_pitch} ${cam_yaw}"/>
   </joint>
 
   <!-- ================= OPTICAL FRAME ================= -->
@@ -297,25 +325,14 @@
     <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
   </joint>
 
-  <!-- ================= ASSEMBLY FIXTURE + BASE PLATE ================= -->
-  <xacro:assembly_fixture name="assembly_fixture" parent="table_link"
-    xyz="${fixture_x} ${fixture_y} 0" rpy="0 0 0"/>
+  <!-- ================= 4-PIN PLUG / SOCKET ================= -->
+  <!-- Socket fixed to the table; plug sits loose nearby, pins up, ready to
+       be picked up and inserted. -->
+  <xacro:socket name="socket" parent="table_link"
+    xyz="${socket_x} ${socket_y} 0" rpy="0 0 0"/>
 
-  <xacro:base_plate_with_hole name="base_plate" parent="assembly_fixture_link"
-    xyz="0 0 0.006" rpy="0 0 0"/>
-
-  <xacro:peg name="assembly_peg" parent="table_link"
-    xyz="${fixture_x + 0.09} ${fixture_y} 0" rpy="0 0 0"/>
-
-  <!-- ================= PARTS TRAY ================= -->
-  <xacro:parts_tray name="parts_tray" parent="table_link"
-    xyz="${tray_x} ${tray_y} 0" rpy="0 0 0"/>
-
-  <xacro:peg name="spare_peg_1" parent="parts_tray_link"
-    xyz="-0.03 0.02 0.013" rpy="0 ${pi/2} 0" radius="0.007" length="0.035"/>
-
-  <xacro:peg name="spare_peg_2" parent="parts_tray_link"
-    xyz="0.02 -0.015 0.013" rpy="0 ${pi/2} ${pi/4}" radius="0.007" length="0.035"/>
+  <xacro:plug name="plug" parent="table_link"
+    xyz="${plug_x} ${plug_y} 0" rpy="0 0 0"/>
 
   <!-- ================= ROS2_CONTROL ================ -->
   <xacro:macro name="position_joint" params="name">
@@ -349,6 +366,7 @@
   <!-- ================= GAZEBO_PLUGINS ================ -->
   <gazebo reference="camera_link">
     <sensor name="rgb_camera" type="camera">
+      <topic>overhead_camera/rgb/image_raw</topic>
       <update_rate>30</update_rate>
       <camera>
         <horizontal_fov>1.57</horizontal_fov>
@@ -360,6 +378,7 @@
     </sensor>
 
     <sensor name="depth_camera" type="depth_camera">
+      <topic>overhead_camera/depth/image_raw</topic>
       <update_rate>30</update_rate>
       <camera>
         <horizontal_fov>1.57</horizontal_fov>
@@ -367,6 +386,36 @@
         <clip><near>0.1</near><far>5.0</far></clip>
       </camera>
       <always_on>1</always_on>
+    </sensor>
+  </gazebo>
+
+  <!-- Wrist cameras: simple UVC RGB webcams (no depth, matching the real
+       Hex-Nut 32x32 UVC module the mount is sized for). -->
+  <gazebo reference="left_wrist_camera_link">
+    <sensor name="left_wrist_rgb_camera" type="camera">
+      <topic>left_wrist_camera/image_raw</topic>
+      <update_rate>30</update_rate>
+      <camera>
+        <horizontal_fov>1.57</horizontal_fov>
+        <image><width>640</width><height>480</height></image>
+        <clip><near>0.02</near><far>3.0</far></clip>
+      </camera>
+      <always_on>1</always_on>
+      <visualize>true</visualize>
+    </sensor>
+  </gazebo>
+
+  <gazebo reference="right_wrist_camera_link">
+    <sensor name="right_wrist_rgb_camera" type="camera">
+      <topic>right_wrist_camera/image_raw</topic>
+      <update_rate>30</update_rate>
+      <camera>
+        <horizontal_fov>1.57</horizontal_fov>
+        <image><width>640</width><height>480</height></image>
+        <clip><near>0.02</near><far>3.0</far></clip>
+      </camera>
+      <always_on>1</always_on>
+      <visualize>true</visualize>
     </sensor>
   </gazebo>
 
