@@ -192,18 +192,27 @@ the launch file, at the exact world-frame coordinates (`x`, `y`,
 `table_top_z`) the object used to occupy when it was still welded to the
 table in the URDF.
 
-**Mass and inertia are real, computed values, not placeholders.** The peg is
-a solid steel cylinder (density 7800 kg/m³): mass = 0.09924 kg, with the
-standard solid-cylinder inertia formula. The plug is a composite of
-aluminum body + steel pins + brass knob (densities 2700 / 7800 / 8500
-kg/m³): each part's own center of mass and primitive inertia (box, cylinder,
-or sphere formula) is combined about the assembly's actual center of mass
-via the parallel axis theorem — mass = 0.26659 kg, CoM = (0, 0, 0.03263 m)
-measured from the pin tips, Ixx = Iyy = 9.331e-05, Izz = 6.778e-05 (the
-off-diagonal terms are exactly zero thanks to the 4-fold pin symmetry and
-the body/knob sitting on-axis). SDF requires the `<inertial><pose>` to be at
-the actual center of mass, which is why it's not just placed at a convenient
-reference point. Verified live: both objects settle instantly and stay
+**Mass and inertia are real, computed values, not placeholders.** Both parts
+are solid PLA (density 1240 kg/m³) — initially modeled as steel/aluminum/
+brass, then switched once it was clear the real parts will be 3D-printed,
+and because a 267 g metal plug was near the limit of what the SO-101
+gripper can hold. The peg is a solid cylinder: mass = 0.01578 kg, with the
+standard solid-cylinder inertia formula. The plug is a composite of box
+body + 4 pins + 3-part knob, all at the same PLA density: each part's own
+center of mass and primitive inertia (box, cylinder, or sphere formula) is
+combined about the assembly's actual center of mass via the parallel axis
+theorem — mass = 0.06492 kg, CoM = (0, 0, 0.02982 m) measured from the pin
+tips, Ixx = Iyy = 2.0305e-05, Izz = 2.0762e-05 (the off-diagonal terms are
+exactly zero thanks to the 4-fold pin symmetry and the body/knob sitting
+on-axis). SDF requires the `<inertial><pose>` to be at the actual center of
+mass, which is why it's not just placed at a convenient reference point.
+
+Worth knowing: solid PLA puts the plug at ~65 g, not the ~40 g a real FDM
+print would weigh — the 14mm knob sphere alone accounts for ~14 g of the
+solid-model mass. Real prints are typically ~15-20% infill, not solid
+plastic; switch to that if you want the closer, infill-adjusted figure.
+
+Verified live: both objects settle instantly and stay
 bit-for-bit stationary over 8+ seconds of simulated time, meaning they don't
 jitter or drift the way a mismatched mass/inertia/collision combination
 typically would.
@@ -256,7 +265,7 @@ answer to compare a real pose estimate against.
 
 | Camera | Type | Gazebo sensor | ROS 2 topics |
 |---|---|---|---|
-| Overhead (gantry) | RGB-D | `rgb_camera` + `depth_camera` on `camera_link` | `/overhead_camera/rgb/{image_raw,camera_info}`, `/overhead_camera/depth/{image_raw,camera_info}` |
+| Overhead (gantry) | RGB-D | `rgb_camera` + `depth_camera` on `camera_link` | `/overhead_camera/rgb/{image_raw,camera_info}`, `/overhead_camera/depth/{image_raw,camera_info,image_raw/points}` |
 | Left wrist | RGB only | `left_wrist_rgb_camera` on `left_wrist_camera_link` | `/left_wrist_camera/{image_raw,camera_info}` |
 | Right wrist | RGB only | `right_wrist_rgb_camera` on `right_wrist_camera_link` | `/right_wrist_camera/{image_raw,camera_info}` |
 
@@ -267,22 +276,61 @@ module, not a depth sensor like the overhead one.
 not ROS 2, until bridged. `workcell_gazebo.launch.py` runs one
 `ros_gz_image image_bridge` node (handles all 4 image topics + automatically
 republishes compressed/theora/zstd variants) and one
-`ros_gz_bridge parameter_bridge` node (handles the `camera_info` topics,
-which `image_bridge` doesn't cover). Each sensor has an explicit `<topic>`
-tag in the xacro so these ROS topic names are stable regardless of how
-Gazebo's URDF→SDF conversion names links internally (worth knowing: because
-`camera_link` connects to `world` through an unbroken chain of *fixed*
-joints, Gazebo's SDF conversion reduces/merges it into `table_link`
-internally — harmless, but it's why `gz topic -l` shows the overhead sensor
-topics nested under `.../link/table_link/...` rather than `camera_link`).
+`ros_gz_bridge parameter_bridge` node (handles the `camera_info` topics and
+the depth point cloud, neither of which `image_bridge` covers). Each sensor
+has an explicit `<topic>` tag in the xacro so these ROS topic names are
+stable regardless of how Gazebo's URDF→SDF conversion names links
+internally (worth knowing: because `camera_link` connects to `world`
+through an unbroken chain of *fixed* joints, Gazebo's SDF conversion
+reduces/merges it into `table_link` internally — it's why `gz topic -l`
+shows the overhead sensor topics nested under `.../link/table_link/...`
+rather than `camera_link`).
 
 **Depth point cloud**: the overhead depth sensor also produces a 3D point
-cloud (`.../depth/image_raw/points` on Gazebo's side) as an automatic
-side-effect of the depth camera plugin — this is *not* bridged to ROS 2
-(unneeded overhead; it ran at ~8Hz vs ~24-28Hz for plain images). It still
-exists inside Gazebo if you ever want it later; just add its topic to the
-`parameter_bridge` arguments:
-`/overhead_camera/depth/image_raw/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked`.
+cloud as an automatic side-effect of the depth camera plugin, bridged to
+ROS 2 as `/overhead_camera/depth/image_raw/points`
+(`sensor_msgs/msg/PointCloud2`, from Gazebo's `gz.msgs.PointCloudPacked`).
+Verified streaming at ~7-8Hz, versus ~24-28Hz for the plain depth/RGB
+images — expected, since generating a point cloud is heavier than a plain
+image.
+
+**Fixing the point cloud/image `frame_id`**: that `camera_link` →
+`table_link` merge mentioned above turned out not to be harmless after all.
+Gazebo sensors stamp every outgoing message (`image_raw`, `camera_info`,
+the point cloud) with a `frame_id` computed from their *own internal*
+link/model hierarchy — and since `camera_link` doesn't survive the merge as
+its own entity, that computed name is a Gazebo-internal scoped string, not
+a frame `robot_state_publisher` has ever heard of. Any code trying to
+`tf2.lookupTransform()` using that `frame_id` would fail outright.
+
+The fix has two parts, and the first one already existed:
+
+1. **A real optical-frame link.** `camera_optical_frame` (a plain, empty
+   link) is attached to `camera_link` via a fixed joint with
+   `rpy="${-pi/2} 0 ${-pi/2}"` — the standard ROS REP-103 conversion from a
+   link's x-forward/z-up convention to a camera's z-forward/x-right/y-down
+   optical convention. This was already in both Gazebo xacro files from
+   earlier work (the wrist and overhead cameras both have one); it just
+   wasn't yet being *used* by the sensors themselves.
+2. **`<gz_frame_id>camera_optical_frame</gz_frame_id>`**, added as a direct
+   child of both the `rgb_camera` and `depth_camera` `<sensor>` tags. This
+   is Gazebo's override for which frame name to stamp on a sensor's
+   messages, bypassing the auto-computed (and, here, wrong) internal name
+   entirely.
+
+Only the *overhead* camera needed this. The wrist cameras don't have the
+merge problem in the first place: `left_wrist_camera_link`/
+`right_wrist_camera_link` sit downstream of several *revolute* joints
+(shoulder/elbow/wrist), and Gazebo's link reduction only collapses chains
+connected purely by fixed joints — so their link names survive intact and
+were never affected.
+
+Verified live, in both the active and peghole workcells: the bridged point
+cloud and RGB image both now carry `frame_id: camera_optical_frame`, and
+`ros2 run tf2_ros tf2_echo world camera_optical_frame` resolves to a real,
+sensible transform — confirming the frame isn't just a label that happens
+to match, but one `robot_state_publisher` actually publishes and TF can
+genuinely use.
 
 ## Controllers (`config/controllers.yaml`, reused unchanged)
 
@@ -353,5 +401,7 @@ Per the original brief, this work is the workcell's visual/physical
 description only. Not built yet, on purpose: perception algorithms, motion
 planning, active vision, assembly controllers, or failure recovery logic.
 Also not done: IK/reachability verification of the assembly-area placement
-(fixture/tray coordinates are a reasonable default, not IK-checked), and the
-peg/plate aren't yet free bodies for real pick-and-place.
+(fixture/tray coordinates are a reasonable default, not IK-checked). The peg
+and plug are free bodies now (see "Pickable objects"); the plate, fixture,
+and socket remain static by design, since only the peg/plug are meant to be
+manipulated.

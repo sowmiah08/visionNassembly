@@ -162,6 +162,10 @@ def generate_launch_description():
                 '/right_wrist_camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
                 '/overhead_camera/rgb/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
                 '/overhead_camera/depth/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
+                # Depth point cloud, generated automatically by the depth
+                # camera plugin as "<topic>/points" (topic set via <topic>
+                # in the sensor's xacro -- confirmed with `gz topic -l`).
+                '/overhead_camera/depth/image_raw/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked',
                 # robot_state_publisher and rviz2 both run with
                 # use_sim_time: True, so without this their clocks never
                 # advance (stuck at t=0) and RViz's TF buffer silently fails

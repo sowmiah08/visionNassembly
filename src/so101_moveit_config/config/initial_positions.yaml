@@ -1,0 +1,15 @@
+# Default initial positions for so101_dual_arm_workcell's ros2_control fake system
+
+initial_positions:
+  left_elbow_flex: 0
+  left_gripper: 0
+  left_shoulder_lift: 0
+  left_shoulder_pan: 0
+  left_wrist_flex: 0
+  left_wrist_roll: 0
+  right_elbow_flex: 0
+  right_gripper: 0
+  right_shoulder_lift: 0
+  right_shoulder_pan: 0
+  right_wrist_flex: 0
+  right_wrist_roll: 0

@@ -47,3 +47,7 @@ Thumbs.db
 # *.pth
 # *.onnx
 # *.engine
+
+# Files to exclude from Git
+src/so101_description/WORKCELL_GUIDE.md
+src/so101_description/MOVEIT_SETUP_GUIDE.md

@@ -5,11 +5,12 @@
   into it with a fixed joint, so it is a genuine free rigid body the gripper
   can actually pick up.
 
-  Mass and inertia are computed for a solid steel cylinder (radius 0.009 m,
-  length 0.05 m, density 7800 kg/m^3): mass = rho * pi * r^2 * h = 0.09924 kg,
-  Ixx = Iyy = (1/12) m (3r^2 + h^2), Izz = (1/2) m r^2. Link origin matches
-  the original peg macro's convention (bottom tip at z=0), so the inertial
-  pose sits at the geometric center, z = length/2.
+  Mass and inertia are computed for a solid PLA cylinder (radius 0.009 m,
+  length 0.05 m, density 1240 kg/m^3, matching the real 3D-printed part
+  rather than the steel originally assumed): mass = rho * pi * r^2 * h =
+  0.01578 kg, Ixx = Iyy = (1/12) m (3r^2 + h^2), Izz = (1/2) m r^2. Link
+  origin matches the original peg macro's convention (bottom tip at z=0),
+  so the inertial pose sits at the geometric center, z = length/2.
 
   Friction mu/mu2 = 1.0 per the project's "high friction for pickable parts"
   requirement.
@@ -31,11 +32,11 @@
     <link name="peg_link">
       <inertial>
         <pose>0 0 0.025 0 0 0</pose>
-        <mass>0.09924</mass>
+        <mass>0.01578</mass>
         <inertia>
-          <ixx>2.269e-05</ixx>
-          <iyy>2.269e-05</iyy>
-          <izz>4.019e-06</izz>
+          <ixx>3.6064e-06</ixx>
+          <iyy>3.6064e-06</iyy>
+          <izz>6.3897e-07</izz>
           <ixy>0</ixy>
           <ixz>0</ixz>
           <iyz>0</iyz>

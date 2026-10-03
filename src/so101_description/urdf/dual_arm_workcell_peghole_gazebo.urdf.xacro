@@ -394,6 +394,16 @@
   <gazebo reference="camera_link">
     <sensor name="rgb_camera" type="camera">
       <topic>overhead_camera/rgb/image_raw</topic>
+      <!-- camera_link gets merged into table_link by Gazebo's URDF->SDF
+           conversion (it's connected to world through an unbroken chain of
+           fixed joints), so without this the frame_id stamped on outgoing
+           image/point-cloud messages would be a Gazebo-internal, merged
+           scoped name that TF doesn't know: not a frame
+           robot_state_publisher ever actually publishes. Pointing it at
+           camera_optical_frame (a real link, published as part of the URDF
+           TF tree) instead gives every message header a frame_id that's
+           actually resolvable. -->
+      <gz_frame_id>camera_optical_frame</gz_frame_id>
       <update_rate>30</update_rate>
       <camera>
         <horizontal_fov>1.57</horizontal_fov>
@@ -406,6 +416,7 @@
 
     <sensor name="depth_camera" type="depth_camera">
       <topic>overhead_camera/depth/image_raw</topic>
+      <gz_frame_id>camera_optical_frame</gz_frame_id>
       <update_rate>30</update_rate>
       <camera>
         <horizontal_fov>1.57</horizontal_fov>
