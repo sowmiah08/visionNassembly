@@ -48,7 +48,8 @@
   <xacro:property name="gantry_post_height" value="0.55"/>
   <xacro:property name="gantry_post_x"      value="0.46"/>
 
-  <xacro:property name="cam_pitch" value="${pi/3}"/>
+  <!-- pitch=85deg: 5deg off straight-down (was 60deg/30deg) -->
+  <xacro:property name="cam_pitch" value="${pi*85/180}"/>
   <xacro:property name="cam_yaw"   value="${-pi/2}"/>
 
   <!-- ================= ASSEMBLY AREA ================= -->

@@ -6,10 +6,13 @@
   can be spawned into Gazebo (mirrors the existing dual_arm_gazebo.urdf.xacro
   pattern).
 
-  The sole manipulable object pair is the 4-pin plug and its matching
-  4-pocket socket. The earlier single-peg/hole-plate setup (fixture, base
-  plate, peg, parts tray) still exists, just moved out of the active
-  workcell into dual_arm_workcell_peghole_gazebo.urdf.xacro.
+  The socket (4-pocket) is the only assembly object defined here, fixed to
+  the table. Its matching 4-pin plug is a genuine free rigid body instead,
+  spawned separately as models/plug.sdf by workcell_gazebo.launch.py so it
+  can actually be picked up, with its ground-truth pose bridged to ROS 2
+  for later perception evaluation. The earlier single-peg/hole-plate setup
+  (fixture, base plate, peg, parts tray) still exists, just moved out of the
+  active workcell into dual_arm_workcell_peghole_gazebo.urdf.xacro.
 
   The wrist cameras are mounted physically (mesh + link + joint, via the
   so101_*_arm_camera fragments) but intentionally have no gazebo sensor
@@ -58,9 +61,13 @@
   <xacro:property name="cam_yaw"   value="${-pi/2}"/>
 
   <!-- ================= ASSEMBLY AREA ================= -->
-  <!-- The only manipulable objects are the 4-pin plug and socket: the
-       single-peg/hole-plate setup now lives separately in
-       dual_arm_workcell_peghole_gazebo.urdf.xacro. -->
+  <!-- Socket is static, fixed to the table. The plug is a separately
+       spawned free body (models/plug.sdf), not part of this URDF, see
+       workcell_gazebo.launch.py. plug_x/plug_y are kept here only so the
+       launch file's spawn position (world frame: x=plug_x, y=plug_y,
+       z=table_top_z, since table_link has no rotation/xy-offset from
+       world) stays next to the property that defines it, for the same
+       spot the plug used to occupy when it was welded to the table. -->
   <xacro:property name="socket_x" value="0.0"/>
   <xacro:property name="socket_y" value="0.08"/>
   <xacro:property name="plug_x"   value="0.0"/>
@@ -325,14 +332,13 @@
     <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
   </joint>
 
-  <!-- ================= 4-PIN PLUG / SOCKET ================= -->
-  <!-- Socket fixed to the table; plug sits loose nearby, pins up, ready to
-       be picked up and inserted. -->
+  <!-- ================= SOCKET (static) ================= -->
+  <!-- The plug is NOT instantiated here: it's a free rigid body, spawned
+       separately as models/plug.sdf via `ros2 run ros_gz_sim create` in
+       workcell_gazebo.launch.py (at plug_x/plug_y, same spot as before) so
+       it's actually pickable rather than welded to the table. -->
   <xacro:socket name="socket" parent="table_link"
     xyz="${socket_x} ${socket_y} 0" rpy="0 0 0"/>
-
-  <xacro:plug name="plug" parent="table_link"
-    xyz="${plug_x} ${plug_y} 0" rpy="0 0 0"/>
 
   <!-- ================= ROS2_CONTROL ================ -->
   <xacro:macro name="position_joint" params="name">

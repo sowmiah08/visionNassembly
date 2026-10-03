@@ -1,10 +1,17 @@
 <?xml version="1.0"?>
 <!--
   Dual-arm assembly workcell (Gazebo Harmonic variant): same table, arms,
-  overhead camera and assembly objects as dual_arm_workcell.urdf.xacro, plus
-  ros2_control command/state interfaces and the gz_ros2_control plugin so it
-  can be spawned into Gazebo (mirrors the existing dual_arm_gazebo.urdf.xacro
-  pattern).
+  overhead camera and assembly objects as dual_arm_workcell_peghole.urdf.xacro,
+  plus ros2_control command/state interfaces and the gz_ros2_control plugin
+  so it can be spawned into Gazebo (mirrors the existing
+  dual_arm_gazebo.urdf.xacro pattern).
+
+  The assembly fixture, base plate, socket, and parts tray (with its two
+  decorative spare pegs) are all static, fixed to the table here. The
+  functional peg and 4-pin plug are instead genuine free rigid bodies,
+  spawned separately as models/peg.sdf and models/plug.sdf by
+  workcell_peghole_gazebo.launch.py so they can actually be picked up, with
+  their ground-truth poses bridged to ROS 2 for later perception evaluation.
 
   The wrist cameras are mounted physically (mesh + link + joint, via the
   so101_*_arm_camera fragments) but intentionally have no gazebo sensor
@@ -48,7 +55,8 @@
   <xacro:property name="gantry_post_height" value="0.55"/>
   <xacro:property name="gantry_post_x"      value="0.46"/>
 
-  <xacro:property name="cam_pitch" value="${pi/3}"/>
+  <!-- pitch=85deg: 5deg off straight-down (was 60deg/30deg) -->
+  <xacro:property name="cam_pitch" value="${pi*85/180}"/>
   <xacro:property name="cam_yaw"   value="${-pi/2}"/>
 
   <!-- ================= ASSEMBLY AREA ================= -->
@@ -323,17 +331,21 @@
     <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
   </joint>
 
-  <!-- ================= ASSEMBLY FIXTURE + BASE PLATE ================= -->
+  <!-- ================= ASSEMBLY FIXTURE + BASE PLATE (static) ================= -->
+  <!-- The peg is NOT instantiated here: it's a free rigid body, spawned
+       separately as models/peg.sdf via `ros2 run ros_gz_sim create` in
+       workcell_peghole_gazebo.launch.py (at the same spot it used to
+       occupy: x = fixture_x + 0.09, y = fixture_y) so it's actually
+       pickable rather than welded to the table. -->
   <xacro:assembly_fixture name="assembly_fixture" parent="table_link"
     xyz="${fixture_x} ${fixture_y} 0" rpy="0 0 0"/>
 
   <xacro:base_plate_with_hole name="base_plate" parent="assembly_fixture_link"
     xyz="0 0 0.006" rpy="0 0 0"/>
 
-  <xacro:peg name="assembly_peg" parent="table_link"
-    xyz="${fixture_x + 0.09} ${fixture_y} 0" rpy="0 0 0"/>
-
   <!-- ================= PARTS TRAY ================= -->
+  <!-- Spare pegs stay fixed/decorative: only the functional peg and plug
+       were asked to become pickable, not every loose part in the scene. -->
   <xacro:parts_tray name="parts_tray" parent="table_link"
     xyz="${tray_x} ${tray_y} 0" rpy="0 0 0"/>
 
@@ -343,14 +355,11 @@
   <xacro:peg name="spare_peg_2" parent="parts_tray_link"
     xyz="0.02 -0.015 0.013" rpy="0 ${pi/2} ${pi/4}" radius="0.007" length="0.035"/>
 
-  <!-- ================= 4-PIN PLUG / SOCKET ================= -->
-  <!-- Socket fixed to the table; plug sits loose nearby, pins up, ready to
-       be picked up and inserted. -->
+  <!-- ================= SOCKET (static) ================= -->
+  <!-- The plug is likewise spawned separately as models/plug.sdf, not
+       instantiated here, see workcell_peghole_gazebo.launch.py. -->
   <xacro:socket name="socket" parent="table_link"
     xyz="${socket_x} ${socket_y} 0" rpy="0 0 0"/>
-
-  <xacro:plug name="plug" parent="table_link"
-    xyz="${plug_x} ${plug_y} 0" rpy="0 0 0"/>
 
   <!-- ================= ROS2_CONTROL ================ -->
   <xacro:macro name="position_joint" params="name">

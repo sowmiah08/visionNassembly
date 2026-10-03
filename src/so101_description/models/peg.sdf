@@ -1,0 +1,79 @@
+<?xml version="1.0"?>
+<!--
+  Standalone, freely-movable peg model: spawned separately from the robot
+  URDF (via `ros2 run ros_gz_sim create -file peg.sdf`) rather than welded
+  into it with a fixed joint, so it is a genuine free rigid body the gripper
+  can actually pick up.
+
+  Mass and inertia are computed for a solid steel cylinder (radius 0.009 m,
+  length 0.05 m, density 7800 kg/m^3): mass = rho * pi * r^2 * h = 0.09924 kg,
+  Ixx = Iyy = (1/12) m (3r^2 + h^2), Izz = (1/2) m r^2. Link origin matches
+  the original peg macro's convention (bottom tip at z=0), so the inertial
+  pose sits at the geometric center, z = length/2.
+
+  Friction mu/mu2 = 1.0 per the project's "high friction for pickable parts"
+  requirement.
+
+  Ground truth: no plugin is attached here. Gazebo's gz-sim-pose-publisher-
+  system plugin only reports a link's pose relative to its own model (which
+  is trivially identity for a single-link free body like this), not the
+  model's actual world pose, and there is no "give me this model's world
+  pose" option on it. The real world pose instead comes from Gazebo's
+  built-in SceneBroadcaster (already loaded by the world file), consumed by
+  so101_description/ground_truth_pose_bridge.py (a small custom bridge
+  node, started by the launch file) which republishes it on ROS 2 as
+  /ground_truth/peg_pose (geometry_msgs/msg/PoseStamped). Phase 5 should
+  read that topic; it should never be fed to a vision pipeline as input,
+  since it bypasses perception entirely.
+-->
+<sdf version="1.9">
+  <model name="peg">
+    <link name="peg_link">
+      <inertial>
+        <pose>0 0 0.025 0 0 0</pose>
+        <mass>0.09924</mass>
+        <inertia>
+          <ixx>2.269e-05</ixx>
+          <iyy>2.269e-05</iyy>
+          <izz>4.019e-06</izz>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyz>0</iyz>
+        </inertia>
+      </inertial>
+
+      <visual name="visual">
+        <pose>0 0 0.025 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.009</radius>
+            <length>0.05</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0.55 0.57 0.60 1.0</ambient>
+          <diffuse>0.55 0.57 0.60 1.0</diffuse>
+          <specular>0.6 0.6 0.6 1.0</specular>
+        </material>
+      </visual>
+
+      <collision name="collision">
+        <pose>0 0 0.025 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.009</radius>
+            <length>0.05</length>
+          </cylinder>
+        </geometry>
+        <surface>
+          <friction>
+            <ode>
+              <mu>1.0</mu>
+              <mu2>1.0</mu2>
+            </ode>
+          </friction>
+        </surface>
+      </collision>
+    </link>
+  </model>
+</sdf>

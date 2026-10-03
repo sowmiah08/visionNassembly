@@ -25,19 +25,28 @@ so101_description/
 │   ├── dual_arm_gazebo.urdf.xacro            pre-existing dual-arm Gazebo setup (untouched)
 │   ├── so101_scene.urdf.xacro                pre-existing single-arm + table scene (untouched)
 │   │
-│   ├── so101_left_arm_camera.urdf.fragment   NEW: left arm + wrist camera
-│   ├── so101_right_arm_camera.urdf.fragment  NEW: right arm + wrist camera (wrist_roll fixed, see below)
-│   ├── assembly_objects.urdf.xacro           NEW: reusable macros for peg/plate/fixture/tray/plug/socket
-│   ├── dual_arm_workcell.urdf.xacro          NEW: full workcell for RViz
-│   └── dual_arm_workcell_gazebo.urdf.xacro   NEW: full workcell for Gazebo Harmonic
+│   ├── so101_left_arm_camera.urdf.fragment   left arm + wrist camera
+│   ├── so101_right_arm_camera.urdf.fragment  right arm + wrist camera (wrist_roll fixed, see below)
+│   ├── assembly_objects.urdf.xacro           reusable macros for peg/plate/fixture/tray/plug/socket
+│   ├── dual_arm_workcell.urdf.xacro          active workcell for RViz (plug + socket only)
+│   ├── dual_arm_workcell_gazebo.urdf.xacro   active workcell for Gazebo Harmonic (plug + socket only)
+│   ├── dual_arm_workcell_peghole.urdf.xacro         preserved snapshot for RViz: fixture/plate/peg/tray + plug/socket
+│   └── dual_arm_workcell_peghole_gazebo.urdf.xacro  same, for Gazebo Harmonic
 │
 ├── meshes/
-│   ├── generate_plate_with_hole.py           NEW: procedural mesh generator (see below)
-│   ├── base_plate_with_hole.stl              NEW: generated output
-│   ├── generate_socket_cell.py               NEW: procedural mesh generator (see below)
-│   └── socket_cell_blind_hole.stl            NEW: generated output
+│   ├── generate_plate_with_hole.py           procedural mesh generator (see below)
+│   ├── base_plate_with_hole.stl              generated output
+│   ├── generate_socket_cell.py               procedural mesh generator (see below)
+│   └── socket_cell_blind_hole.stl            generated output
 │
-├── rviz/workcell_cameras.rviz                NEW: saved RViz config, RobotModel + 3 camera Image displays
+├── models/
+│   ├── peg.sdf                               standalone, freely-movable peg (Gazebo only)
+│   └── plug.sdf                              standalone, freely-movable 4-pin plug (Gazebo only)
+│
+├── so101_description/
+│   └── ground_truth_pose_bridge.py           custom node: real object poses -> ROS 2 (see below)
+│
+├── rviz/workcell_cameras.rviz                saved RViz config, RobotModel + 3 camera Image displays
 │
 ├── launch/
 │   ├── so101_display.launch.py               pre-existing (untouched)
@@ -45,8 +54,10 @@ so101_description/
 │   ├── so101_scene.launch.py                 pre-existing (untouched)
 │   ├── dual_setup.launch.py                  pre-existing (untouched)
 │   ├── dual_setup_gazebo.launch.py           pre-existing (untouched)
-│   ├── workcell_display.launch.py            NEW: launches the workcell in RViz
-│   └── workcell_gazebo.launch.py             NEW: launches the workcell in Gazebo Harmonic (also opens RViz)
+│   ├── workcell_display.launch.py            active workcell in RViz
+│   ├── workcell_gazebo.launch.py             active workcell in Gazebo Harmonic (also opens RViz)
+│   ├── workcell_peghole_display.launch.py    preserved peghole snapshot in RViz
+│   └── workcell_peghole_gazebo.launch.py     preserved peghole snapshot in Gazebo Harmonic
 │
 ├── config/controllers.yaml                   pre-existing, reused unchanged
 ├── worlds/test_world.sdf                      pre-existing, reused unchanged
@@ -130,10 +141,12 @@ rectangle's corners and the circle). Re-run it any time with
 `python3 meshes/generate_plate_with_hole.py` if you want different
 dimensions (edit the constants at the top of the file).
 
-The plate and fixture are currently fixed-jointed into the one big model —
-fine for visualizing the workcell, but note that *for actual pick-and-place
-later* you'd want the peg (and maybe the plate) as a free body or a
-separately spawned model instead, so it can actually be picked up.
+The plate and fixture stay fixed-jointed into the one big model (deliberately
+static). The peg does not: in the Gazebo workcells it's a separate, freely
+movable spawned object instead, so it can actually be picked up — see
+"Pickable objects" below. The `peg` xacro macro itself is unchanged and is
+still what's used in the RViz-only display variants, where there's no
+physics/spawning concept and "pickable" doesn't apply.
 
 ### 4-pin plug and socket
 
@@ -159,6 +172,85 @@ the same way, in the same loop). Volume matched the analytic expectation to
 Pin radius (5mm) vs pocket radius (7mm) gives 2mm clearance per side; pin
 length (20mm) is shorter than the pocket depth (22mm) so the plug can seat
 flush against the socket's top surface without its pins bottoming out.
+
+## Pickable objects (`models/*.sdf`, Gazebo only)
+
+The peg and plug are **not** instantiated in either Gazebo xacro file. A
+fixed joint welds an object rigidly to the table — fine for a static prop,
+but it means the object can never actually be picked up, since the "pick"
+would have to break a joint the physics engine treats as permanent. The
+plate, fixture, socket, and parts tray are deliberately kept this way
+(static, fixed to the table); the peg and plug are the only objects meant to
+be manipulated, so they're spawned as separate, freestanding SDF models
+instead:
+
+- `models/peg.sdf` — used by the peghole workcell
+- `models/plug.sdf` — used by both the active and peghole workcells
+
+Each is spawned by its own `ros2 run ros_gz_sim create -file ...` call in
+the launch file, at the exact world-frame coordinates (`x`, `y`,
+`table_top_z`) the object used to occupy when it was still welded to the
+table in the URDF.
+
+**Mass and inertia are real, computed values, not placeholders.** The peg is
+a solid steel cylinder (density 7800 kg/m³): mass = 0.09924 kg, with the
+standard solid-cylinder inertia formula. The plug is a composite of
+aluminum body + steel pins + brass knob (densities 2700 / 7800 / 8500
+kg/m³): each part's own center of mass and primitive inertia (box, cylinder,
+or sphere formula) is combined about the assembly's actual center of mass
+via the parallel axis theorem — mass = 0.26659 kg, CoM = (0, 0, 0.03263 m)
+measured from the pin tips, Ixx = Iyy = 9.331e-05, Izz = 6.778e-05 (the
+off-diagonal terms are exactly zero thanks to the 4-fold pin symmetry and
+the body/knob sitting on-axis). SDF requires the `<inertial><pose>` to be at
+the actual center of mass, which is why it's not just placed at a convenient
+reference point. Verified live: both objects settle instantly and stay
+bit-for-bit stationary over 8+ seconds of simulated time, meaning they don't
+jitter or drift the way a mismatched mass/inertia/collision combination
+typically would.
+
+**Friction**: every collision surface on both objects sets
+`<friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction>`, per the
+"high friction for pickable parts" requirement.
+
+### Ground-truth pose (for Phase 5)
+
+Getting an object's *true* world-frame pose out of Gazebo turned out to need
+more than the obvious approach. Two things were tried and rejected before
+landing on the real fix:
+
+1. **`gz-sim-pose-publisher-system` plugin with `publish_link_pose`** — this
+   reports a link's pose *relative to its own model*, which is trivially
+   identity for a single-link free body (there's nothing else in the model
+   to be relative to). Confirmed empirically: the published pose was all
+   zeros.
+2. **Bridging Gazebo's built-in `/world/<world>/dynamic_pose/info`
+   (published automatically by SceneBroadcaster, with correct world-frame
+   data for every model)** — the data was right, but `ros_gz_bridge`'s
+   `gz.msgs.Pose_V` → `tf2_msgs/msg/TFMessage` conversion doesn't populate
+   `child_frame_id` from each pose's `name` field, so every bridged
+   transform came through unnamed: unusable for "look up the plug by name."
+
+The actual fix is `so101_description/ground_truth_pose_bridge.py`, a small
+custom node (installed as a `ros2 run`-able console script) that uses the
+`gz.transport13` / `gz.msgs10` Python bindings (bundled with the Gazebo
+Harmonic install) to subscribe to `/world/default/dynamic_pose/info`
+directly, filters for whichever model names it's configured to track, and
+republishes each one as a standalone, correctly-named ROS 2 topic:
+
+| Workcell | Topic(s) |
+|---|---|
+| Active (`workcell_gazebo.launch.py`) | `/ground_truth/plug_pose` |
+| Peghole (`workcell_peghole_gazebo.launch.py`) | `/ground_truth/peg_pose`, `/ground_truth/plug_pose` |
+
+Each is a `geometry_msgs/msg/PoseStamped` with `frame_id: world`, timestamped
+with sim time (the node runs with `use_sim_time: True` like everything else
+in the launch file). Verified live: both topics stream real, correct
+coordinates matching each object's actual spawn position.
+
+**This is ground truth, not perception** — nothing that's meant to simulate
+or evaluate a vision pipeline should subscribe to these topics as if they
+were sensor output; they exist specifically so Phase 5 has a known-correct
+answer to compare a real pose estimate against.
 
 ## Cameras
 

@@ -65,6 +65,13 @@ setup(
         (
             'share/' + package_name + '/rviz',
             glob('rviz/*.rviz')
+        ),
+
+    # standalone SDF models for objects spawned separately from the robot
+    # URDF (free rigid bodies, not welded to the table)
+        (
+            'share/' + package_name + '/models',
+            glob('models/*.sdf')
         )
     ],
 
@@ -82,6 +89,8 @@ setup(
     },
 
     entry_points={
-        'console_scripts': [],
+        'console_scripts': [
+            'ground_truth_pose_bridge = so101_description.ground_truth_pose_bridge:main',
+        ],
     },
 )

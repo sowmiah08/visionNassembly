@@ -11,6 +11,11 @@
   <exec_depend>joint_state_publisher_gui</exec_depend>
   <exec_depend>rviz2</exec_depend>
   <exec_depend>xacro</exec_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <!-- ground_truth_pose_bridge.py also needs the gz-transport13 Python
+       bindings (gz.transport13 / gz.msgs10), which come bundled with the
+       Gazebo Harmonic install rather than as a separate rosdep key. -->
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

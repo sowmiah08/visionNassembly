@@ -1,0 +1,180 @@
+<?xml version="1.0"?>
+<!--
+  Standalone, freely-movable 4-pin plug model: spawned separately from the
+  robot URDF (via `ros2 run ros_gz_sim create -file plug.sdf`) rather than
+  welded into it with a fixed joint, so it is a genuine free rigid body the
+  gripper can actually pick up. Geometry matches the `plug` xacro macro in
+  assembly_objects.urdf.xacro (box body + 4 cylindrical pins + door-knob
+  grip), origin at the pins' bottom tips.
+
+  Mass, center of mass, and inertia are a real composite of the actual
+  sub-shapes (not a placeholder): body treated as aluminum (2700 kg/m^3),
+  pins as steel (7800 kg/m^3), knob as brass (8500 kg/m^3). Each part's own
+  solid-primitive inertia (box/cylinder/sphere formula) is combined about
+  the composite center of mass via the parallel axis theorem: I_total =
+  sum( I_cm_i + m_i * (|d_i|^2 * Identity - d_i (x) d_i) ), d_i = part_i's
+  CoM minus the composite CoM. Computed result: mass = 0.26659 kg, CoM =
+  (0, 0, 0.03263), Ixx = Iyy = 9.331e-05, Izz = 6.778e-05 (off-diagonal
+  terms are exactly zero thanks to the 4-fold pin symmetry and the
+  body/knob being on-axis). The <inertial><pose> below is set to that CoM,
+  per SDF's requirement that the inertial frame origin be the link's actual
+  center of mass.
+
+  Friction mu/mu2 = 1.0 on every collision surface, per the project's
+  "high friction for pickable parts" requirement.
+
+  Ground truth: no plugin is attached here. Gazebo's gz-sim-pose-publisher-
+  system plugin only reports a link's pose relative to its own model (which
+  is trivially identity for a single-link free body like this), not the
+  model's actual world pose, and there is no "give me this model's world
+  pose" option on it. The real world pose instead comes from Gazebo's
+  built-in SceneBroadcaster (already loaded by the world file), consumed by
+  so101_description/ground_truth_pose_bridge.py (a small custom bridge
+  node, started by the launch file) which republishes it on ROS 2 as
+  /ground_truth/plug_pose (geometry_msgs/msg/PoseStamped). Phase 5 should
+  read that topic; it should never be fed to a vision pipeline as input,
+  since it bypasses perception entirely.
+-->
+<sdf version="1.9">
+  <model name="plug">
+    <link name="plug_link">
+      <inertial>
+        <pose>0 0 0.03263 0 0 0</pose>
+        <mass>0.26659</mass>
+        <inertia>
+          <ixx>9.331e-05</ixx>
+          <iyy>9.331e-05</iyy>
+          <izz>6.778e-05</izz>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyz>0</iyz>
+        </inertia>
+      </inertial>
+
+      <!-- Body (aluminum) -->
+      <visual name="body_visual">
+        <pose>0 0 0.026 0 0 0</pose>
+        <geometry>
+          <box><size>0.05 0.05 0.012</size></box>
+        </geometry>
+        <material>
+          <ambient>0.85 0.42 0.10 1.0</ambient>
+          <diffuse>0.85 0.42 0.10 1.0</diffuse>
+          <specular>0.7 0.7 0.7 1.0</specular>
+        </material>
+      </visual>
+      <collision name="body_collision">
+        <pose>0 0 0.026 0 0 0</pose>
+        <geometry>
+          <box><size>0.05 0.05 0.012</size></box>
+        </geometry>
+        <surface>
+          <friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction>
+        </surface>
+      </collision>
+
+      <!-- 4 pins in a 2x2 pattern (steel) -->
+      <visual name="pin_pp_visual">
+        <pose>0.015 0.015 0.01 0 0 0</pose>
+        <geometry><cylinder><radius>0.005</radius><length>0.02</length></cylinder></geometry>
+        <material>
+          <ambient>0.55 0.57 0.60 1.0</ambient>
+          <diffuse>0.55 0.57 0.60 1.0</diffuse>
+        </material>
+      </visual>
+      <collision name="pin_pp_collision">
+        <pose>0.015 0.015 0.01 0 0 0</pose>
+        <geometry><cylinder><radius>0.005</radius><length>0.02</length></cylinder></geometry>
+        <surface><friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction></surface>
+      </collision>
+
+      <visual name="pin_pn_visual">
+        <pose>0.015 -0.015 0.01 0 0 0</pose>
+        <geometry><cylinder><radius>0.005</radius><length>0.02</length></cylinder></geometry>
+        <material>
+          <ambient>0.55 0.57 0.60 1.0</ambient>
+          <diffuse>0.55 0.57 0.60 1.0</diffuse>
+        </material>
+      </visual>
+      <collision name="pin_pn_collision">
+        <pose>0.015 -0.015 0.01 0 0 0</pose>
+        <geometry><cylinder><radius>0.005</radius><length>0.02</length></cylinder></geometry>
+        <surface><friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction></surface>
+      </collision>
+
+      <visual name="pin_np_visual">
+        <pose>-0.015 0.015 0.01 0 0 0</pose>
+        <geometry><cylinder><radius>0.005</radius><length>0.02</length></cylinder></geometry>
+        <material>
+          <ambient>0.55 0.57 0.60 1.0</ambient>
+          <diffuse>0.55 0.57 0.60 1.0</diffuse>
+        </material>
+      </visual>
+      <collision name="pin_np_collision">
+        <pose>-0.015 0.015 0.01 0 0 0</pose>
+        <geometry><cylinder><radius>0.005</radius><length>0.02</length></cylinder></geometry>
+        <surface><friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction></surface>
+      </collision>
+
+      <visual name="pin_nn_visual">
+        <pose>-0.015 -0.015 0.01 0 0 0</pose>
+        <geometry><cylinder><radius>0.005</radius><length>0.02</length></cylinder></geometry>
+        <material>
+          <ambient>0.55 0.57 0.60 1.0</ambient>
+          <diffuse>0.55 0.57 0.60 1.0</diffuse>
+        </material>
+      </visual>
+      <collision name="pin_nn_collision">
+        <pose>-0.015 -0.015 0.01 0 0 0</pose>
+        <geometry><cylinder><radius>0.005</radius><length>0.02</length></cylinder></geometry>
+        <surface><friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction></surface>
+      </collision>
+
+      <!-- Door-knob grip: rosette + neck + round head (brass) -->
+      <visual name="knob_rosette_visual">
+        <pose>0 0 0.034 0 0 0</pose>
+        <geometry><cylinder><radius>0.016</radius><length>0.004</length></cylinder></geometry>
+        <material>
+          <ambient>0.80 0.62 0.22 1.0</ambient>
+          <diffuse>0.80 0.62 0.22 1.0</diffuse>
+          <specular>0.9 0.8 0.5 1.0</specular>
+        </material>
+      </visual>
+      <collision name="knob_rosette_collision">
+        <pose>0 0 0.034 0 0 0</pose>
+        <geometry><cylinder><radius>0.016</radius><length>0.004</length></cylinder></geometry>
+        <surface><friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction></surface>
+      </collision>
+
+      <visual name="knob_neck_visual">
+        <pose>0 0 0.042 0 0 0</pose>
+        <geometry><cylinder><radius>0.006</radius><length>0.012</length></cylinder></geometry>
+        <material>
+          <ambient>0.80 0.62 0.22 1.0</ambient>
+          <diffuse>0.80 0.62 0.22 1.0</diffuse>
+          <specular>0.9 0.8 0.5 1.0</specular>
+        </material>
+      </visual>
+      <collision name="knob_neck_collision">
+        <pose>0 0 0.042 0 0 0</pose>
+        <geometry><cylinder><radius>0.006</radius><length>0.012</length></cylinder></geometry>
+        <surface><friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction></surface>
+      </collision>
+
+      <visual name="knob_head_visual">
+        <pose>0 0 0.048 0 0 0</pose>
+        <geometry><sphere><radius>0.014</radius></sphere></geometry>
+        <material>
+          <ambient>0.80 0.62 0.22 1.0</ambient>
+          <diffuse>0.80 0.62 0.22 1.0</diffuse>
+          <specular>0.9 0.8 0.5 1.0</specular>
+        </material>
+      </visual>
+      <collision name="knob_head_collision">
+        <pose>0 0 0.048 0 0 0</pose>
+        <geometry><sphere><radius>0.014</radius></sphere></geometry>
+        <surface><friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction></surface>
+      </collision>
+    </link>
+  </model>
+</sdf>

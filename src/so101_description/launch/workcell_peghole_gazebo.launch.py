@@ -28,6 +28,18 @@ def generate_launch_description():
         'workcell_cameras.rviz'
     )
 
+    peg_sdf_file = os.path.join(
+        pkg_path,
+        'models',
+        'peg.sdf'
+    )
+
+    plug_sdf_file = os.path.join(
+        pkg_path,
+        'models',
+        'plug.sdf'
+    )
+
     resource_path = os.pathsep.join([
         os.path.dirname(pkg_path),
         os.environ.get('GZ_SIM_RESOURCE_PATH', ''),
@@ -55,38 +67,26 @@ def generate_launch_description():
             output='screen'
         ),
 
+        # One spawner call for all 5 controllers instead of 5 separate
+        # processes (separate spawners race each other for the same
+        # controller_manager lock), plus a generous --switch-timeout: the
+        # default 5s switch timeout can be too short for the hardware
+        # interface to finish initializing under load, which fails the
+        # whole activation (seen in practice: joint_state_broadcaster
+        # failing to activate, which disconnects the whole arm from the TF
+        # tree since robot_state_publisher then never gets /joint_states).
         Node(
             package='controller_manager',
             executable='spawner',
-            arguments=['joint_state_broadcaster'],
-            output='screen'
-        ),
-
-        Node(
-            package='controller_manager',
-            executable='spawner',
-            arguments=['so101_left_arm_controller'],
-            output='screen'
-        ),
-
-        Node(
-            package='controller_manager',
-            executable='spawner',
-            arguments=['so101_left_gripper_controller'],
-            output='screen'
-        ),
-
-        Node(
-            package='controller_manager',
-            executable='spawner',
-            arguments=['so101_right_arm_controller'],
-            output='screen'
-        ),
-
-        Node(
-            package='controller_manager',
-            executable='spawner',
-            arguments=['so101_right_gripper_controller'],
+            arguments=[
+                'joint_state_broadcaster',
+                'so101_left_arm_controller',
+                'so101_left_gripper_controller',
+                'so101_right_arm_controller',
+                'so101_right_gripper_controller',
+                '--controller-manager-timeout', '30',
+                '--switch-timeout', '30',
+            ],
             output='screen'
         ),
 
@@ -102,6 +102,34 @@ def generate_launch_description():
                 '-topic', 'robot_description',
                 '-name', 'dual_arm_workcell_peghole',
                 '-z', '0.0',
+            ],
+            output='screen'
+        ),
+
+        # The peg and plug are genuine free rigid bodies (so they're
+        # actually pickable), not part of the robot URDF: spawned separately
+        # from their own SDF files at the same spots they used to occupy
+        # when welded to the table. World-frame position = (x, y,
+        # table_top_z) from dual_arm_workcell_peghole_gazebo.urdf.xacro,
+        # since table_link has no rotation or xy-offset relative to world.
+        Node(
+            package='ros_gz_sim',
+            executable='create',
+            arguments=[
+                '-file', peg_sdf_file,
+                '-name', 'peg',
+                '-x', '0.09', '-y', '0.08', '-z', '0.76',
+            ],
+            output='screen'
+        ),
+
+        Node(
+            package='ros_gz_sim',
+            executable='create',
+            arguments=[
+                '-file', plug_sdf_file,
+                '-name', 'plug',
+                '-x', '0.18', '-y', '0.16', '-z', '0.76',
             ],
             output='screen'
         ),
@@ -140,6 +168,22 @@ def generate_launch_description():
                 # to resolve any transform -- the robot never renders.
                 '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
             ],
+            output='screen'
+        ),
+
+        # Ground truth for Phase 5 perception evaluation (never to be read
+        # as input to a vision pipeline): see ground_truth_pose_bridge.py
+        # for why this needs a small custom node rather than a standard
+        # ros_gz_bridge type mapping. Publishes /ground_truth/peg_pose and
+        # /ground_truth/plug_pose.
+        Node(
+            package='so101_description',
+            executable='ground_truth_pose_bridge',
+            parameters=[{
+                'world_name': 'default',
+                'tracked_models': ['peg', 'plug'],
+                'use_sim_time': True,
+            }],
             output='screen'
         ),
 
