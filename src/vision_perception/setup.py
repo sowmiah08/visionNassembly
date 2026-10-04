@@ -25,6 +25,8 @@ setup(
     entry_points={
         'console_scripts': [
             'tf_test_node = vision_perception.tf_test_node:main',
+            'gt_pick_insert = vision_perception.gt_pick_insert:main',
+            'gt_full_pick_insert = vision_perception.gt_full_pick_insert:main',
         ],
     },
 )

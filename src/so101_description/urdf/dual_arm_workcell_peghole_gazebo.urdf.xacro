@@ -24,9 +24,6 @@
   <xacro:include filename="$(find so101_description)/urdf/so101_left_arm_camera.urdf.fragment"/>
   <xacro:include filename="$(find so101_description)/urdf/so101_right_arm_camera.urdf.fragment"/>
 
-  <!-- Modular assembly-task object macros (peg, base plate w/ hole, fixture, tray) -->
-  <xacro:include filename="$(find so101_description)/urdf/assembly_objects.urdf.xacro"/>
-
   <!-- ================= TABLE (industrial aluminum-extrusion bench) ================= -->
   <!-- x = long side = 100 cm -->
   <!-- y = short side = 50 cm -->
@@ -331,35 +328,23 @@
     <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
   </joint>
 
-  <!-- ================= ASSEMBLY FIXTURE + BASE PLATE (static) ================= -->
-  <!-- The peg is NOT instantiated here: it's a free rigid body, spawned
-       separately as models/peg.sdf via `ros2 run ros_gz_sim create` in
-       workcell_peghole_gazebo.launch.py (at the same spot it used to
-       occupy: x = fixture_x + 0.09, y = fixture_y) so it's actually
-       pickable rather than welded to the table. -->
-  <xacro:assembly_fixture name="assembly_fixture" parent="table_link"
-    xyz="${fixture_x} ${fixture_y} 0" rpy="0 0 0"/>
-
-  <xacro:base_plate_with_hole name="base_plate" parent="assembly_fixture_link"
-    xyz="0 0 0.006" rpy="0 0 0"/>
-
-  <!-- ================= PARTS TRAY ================= -->
-  <!-- Spare pegs stay fixed/decorative: only the functional peg and plug
-       were asked to become pickable, not every loose part in the scene. -->
-  <xacro:parts_tray name="parts_tray" parent="table_link"
-    xyz="${tray_x} ${tray_y} 0" rpy="0 0 0"/>
-
-  <xacro:peg name="spare_peg_1" parent="parts_tray_link"
-    xyz="-0.03 0.02 0.013" rpy="0 ${pi/2} 0" radius="0.007" length="0.035"/>
-
-  <xacro:peg name="spare_peg_2" parent="parts_tray_link"
-    xyz="0.02 -0.015 0.013" rpy="0 ${pi/2} ${pi/4}" radius="0.007" length="0.035"/>
-
-  <!-- ================= SOCKET (static) ================= -->
-  <!-- The plug is likewise spawned separately as models/plug.sdf, not
-       instantiated here, see workcell_peghole_gazebo.launch.py. -->
-  <xacro:socket name="socket" parent="table_link"
-    xyz="${socket_x} ${socket_y} 0" rpy="0 0 0"/>
+  <!-- ================= ASSEMBLY OBJECTS ================= -->
+  <!-- None of assembly_fixture, base_plate, parts_tray, spare_peg_1,
+       spare_peg_2, socket, peg or plug are instantiated here anymore;
+       all are spawned separately as their own SDF models (models/*.sdf)
+       via `ros2 run ros_gz_sim create` in workcell_peghole_gazebo.launch
+       .py instead of being welded into this URDF, so any of them can be
+       repositioned by editing that launch file's spawn args, with no
+       xacro edit or colcon rebuild needed. See that launch file for each
+       one's current world-frame spawn pose (computed from
+       fixture_x/fixture_y/tray_x/tray_y/socket_x/socket_y/plug_x/plug_y
+       above, which are kept here only as documentation of where each
+       used to be welded). peg and plug are free rigid bodies (pickable);
+       assembly_fixture, base_plate, parts_tray, spare_peg_1, spare_peg_2
+       and socket are spawned `<static>true</static>` (fixtures, not
+       pickable parts; spare pegs stay fixed/decorative by original
+       design: only the functional peg and plug were asked to be
+       pickable, not every loose part in the scene). -->
 
   <!-- ================= ROS2_CONTROL ================ -->
   <xacro:macro name="position_joint" params="name">

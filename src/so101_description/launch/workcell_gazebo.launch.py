@@ -34,6 +34,12 @@ def generate_launch_description():
         'plug.sdf'
     )
 
+    socket_sdf_file = os.path.join(
+        pkg_path,
+        'models',
+        'socket.sdf'
+    )
+
     resource_path = os.pathsep.join([
         os.path.dirname(pkg_path),
         os.environ.get('GZ_SIM_RESOURCE_PATH', ''),
@@ -112,7 +118,25 @@ def generate_launch_description():
             arguments=[
                 '-file', plug_sdf_file,
                 '-name', 'plug',
-                '-x', '0.0', '-y', '0.16', '-z', '0.76',
+                '-x', '-0.23', '-y', '0.08', '-z', '0.76',
+            ],
+            output='screen'
+        ),
+
+        # The socket is static (models/socket.sdf has <static>true</static>)
+        # but no longer welded into the robot URDF either, specifically so
+        # it can be repositioned by just editing the -x/-y/-z args below
+        # and relaunching -- no xacro edit or colcon rebuild needed.
+        # World-frame position = (socket_x, socket_y, table_top_z) from
+        # dual_arm_workcell_gazebo.urdf.xacro, same reasoning as the plug
+        # above.
+        Node(
+            package='ros_gz_sim',
+            executable='create',
+            arguments=[
+                '-file', socket_sdf_file,
+                '-name', 'socket',
+                '-x', '0.0', '-y', '0.10', '-z', '0.76',
             ],
             output='screen'
         ),

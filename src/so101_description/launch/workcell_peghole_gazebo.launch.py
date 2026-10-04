@@ -40,6 +40,36 @@ def generate_launch_description():
         'plug.sdf'
     )
 
+    socket_sdf_file = os.path.join(
+        pkg_path,
+        'models',
+        'socket.sdf'
+    )
+
+    assembly_fixture_sdf_file = os.path.join(
+        pkg_path,
+        'models',
+        'assembly_fixture.sdf'
+    )
+
+    base_plate_sdf_file = os.path.join(
+        pkg_path,
+        'models',
+        'base_plate.sdf'
+    )
+
+    parts_tray_sdf_file = os.path.join(
+        pkg_path,
+        'models',
+        'parts_tray.sdf'
+    )
+
+    spare_peg_sdf_file = os.path.join(
+        pkg_path,
+        'models',
+        'spare_peg.sdf'
+    )
+
     resource_path = os.pathsep.join([
         os.path.dirname(pkg_path),
         os.environ.get('GZ_SIM_RESOURCE_PATH', ''),
@@ -130,6 +160,88 @@ def generate_launch_description():
                 '-file', plug_sdf_file,
                 '-name', 'plug',
                 '-x', '0.18', '-y', '0.16', '-z', '0.76',
+            ],
+            output='screen'
+        ),
+
+        # Everything below is static (<static>true</static> in its own SDF
+        # file) -- fixtures, not pickable parts -- but no longer welded
+        # into the robot URDF either, specifically so each one can be
+        # repositioned by just editing its -x/-y/-z/-R/-P/-Y args below and
+        # relaunching: no xacro edit or colcon rebuild needed. World-frame
+        # positions below are computed the same way as peg/plug above, from
+        # fixture_x/fixture_y/tray_x/tray_y/socket_x/socket_y in
+        # dual_arm_workcell_peghole_gazebo.urdf.xacro (table_link has no
+        # rotation or xy-offset relative to world, so table-frame offsets
+        # add directly onto table_top_z).
+        Node(
+            package='ros_gz_sim',
+            executable='create',
+            arguments=[
+                '-file', assembly_fixture_sdf_file,
+                '-name', 'assembly_fixture',
+                '-x', '0.0', '-y', '0.08', '-z', '0.76',
+            ],
+            output='screen'
+        ),
+
+        # Sits on top of assembly_fixture (fixture_z + 0.006).
+        Node(
+            package='ros_gz_sim',
+            executable='create',
+            arguments=[
+                '-file', base_plate_sdf_file,
+                '-name', 'base_plate',
+                '-x', '0.0', '-y', '0.08', '-z', '0.766',
+            ],
+            output='screen'
+        ),
+
+        Node(
+            package='ros_gz_sim',
+            executable='create',
+            arguments=[
+                '-file', parts_tray_sdf_file,
+                '-name', 'parts_tray',
+                '-x', '-0.17', '-y', '0.08', '-z', '0.76',
+            ],
+            output='screen'
+        ),
+
+        # Same spare_peg.sdf geometry spawned twice under different names;
+        # poses match the original macro instantiations' xyz/rpy relative
+        # to parts_tray_link, composed onto parts_tray's world pose above.
+        Node(
+            package='ros_gz_sim',
+            executable='create',
+            arguments=[
+                '-file', spare_peg_sdf_file,
+                '-name', 'spare_peg_1',
+                '-x', '-0.20', '-y', '0.10', '-z', '0.773',
+                '-R', '0', '-P', '1.5707963267948966', '-Y', '0',
+            ],
+            output='screen'
+        ),
+
+        Node(
+            package='ros_gz_sim',
+            executable='create',
+            arguments=[
+                '-file', spare_peg_sdf_file,
+                '-name', 'spare_peg_2',
+                '-x', '-0.15', '-y', '0.065', '-z', '0.773',
+                '-R', '0', '-P', '1.5707963267948966', '-Y', '0.7853981633974483',
+            ],
+            output='screen'
+        ),
+
+        Node(
+            package='ros_gz_sim',
+            executable='create',
+            arguments=[
+                '-file', socket_sdf_file,
+                '-name', 'socket',
+                '-x', '0.18', '-y', '0.08', '-z', '0.76',
             ],
             output='screen'
         ),

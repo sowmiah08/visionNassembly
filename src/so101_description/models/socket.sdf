@@ -1,0 +1,113 @@
+<?xml version="1.0"?>
+<!--
+  Standalone 4-hole socket model: spawned separately from the robot URDF
+  (via `ros2 run ros_gz_sim create -file socket.sdf`) rather than welded
+  into it with a fixed joint, so its world position can be changed by
+  editing the spawn `-x`/`-y`/`-z` args in the launch file -- no xacro edit
+  or colcon rebuild needed to reposition it.
+
+  <static>true</static>: this is not meant to move during simulation (it's
+  a fixture, not a pickable part), it's just no longer welded into the
+  robot's own URDF tree. Geometry matches the `socket` xacro macro in
+  assembly_objects.urdf.xacro: a 0.06 x 0.06 x 0.025 m block with four
+  genuine blind pockets (real mesh geometry, meshes/socket_cell_blind_hole
+  .stl), one per plug pin, tiled at the four (+-0.015, +-0.015) quadrant
+  offsets. Link origin is at the block's bottom face center.
+
+  Mass/inertia are carried over unchanged from the original macro
+  (mass = 0.08 kg, inertial pose z = 0.0125) -- since the model is static,
+  these aren't used by the physics engine, but are kept in case this is
+  ever flipped to a free body later.
+-->
+<sdf version="1.9">
+  <model name="socket">
+    <static>true</static>
+    <link name="socket_link">
+      <inertial>
+        <pose>0 0 0.0125 0 0 0</pose>
+        <mass>0.08</mass>
+        <inertia>
+          <ixx>2e-5</ixx>
+          <iyy>2e-5</iyy>
+          <izz>3e-5</izz>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyz>0</iyz>
+        </inertia>
+      </inertial>
+
+      <!-- 4 quarter-cells tiled at the (+-0.015, +-0.015) quadrant offsets -->
+      <visual name="cell_pp_visual">
+        <pose>0.015 0.015 0 0 0 0</pose>
+        <geometry>
+          <mesh><uri>package://so101_description/meshes/socket_cell_blind_hole.stl</uri></mesh>
+        </geometry>
+        <material>
+          <ambient>0.62 0.30 0.06 1.0</ambient>
+          <diffuse>0.62 0.30 0.06 1.0</diffuse>
+          <specular>0.5 0.5 0.5 1.0</specular>
+        </material>
+      </visual>
+      <collision name="cell_pp_collision">
+        <pose>0.015 0.015 0 0 0 0</pose>
+        <geometry>
+          <mesh><uri>package://so101_description/meshes/socket_cell_blind_hole.stl</uri></mesh>
+        </geometry>
+      </collision>
+
+      <visual name="cell_pn_visual">
+        <pose>0.015 -0.015 0 0 0 0</pose>
+        <geometry>
+          <mesh><uri>package://so101_description/meshes/socket_cell_blind_hole.stl</uri></mesh>
+        </geometry>
+        <material>
+          <ambient>0.62 0.30 0.06 1.0</ambient>
+          <diffuse>0.62 0.30 0.06 1.0</diffuse>
+          <specular>0.5 0.5 0.5 1.0</specular>
+        </material>
+      </visual>
+      <collision name="cell_pn_collision">
+        <pose>0.015 -0.015 0 0 0 0</pose>
+        <geometry>
+          <mesh><uri>package://so101_description/meshes/socket_cell_blind_hole.stl</uri></mesh>
+        </geometry>
+      </collision>
+
+      <visual name="cell_np_visual">
+        <pose>-0.015 0.015 0 0 0 0</pose>
+        <geometry>
+          <mesh><uri>package://so101_description/meshes/socket_cell_blind_hole.stl</uri></mesh>
+        </geometry>
+        <material>
+          <ambient>0.62 0.30 0.06 1.0</ambient>
+          <diffuse>0.62 0.30 0.06 1.0</diffuse>
+          <specular>0.5 0.5 0.5 1.0</specular>
+        </material>
+      </visual>
+      <collision name="cell_np_collision">
+        <pose>-0.015 0.015 0 0 0 0</pose>
+        <geometry>
+          <mesh><uri>package://so101_description/meshes/socket_cell_blind_hole.stl</uri></mesh>
+        </geometry>
+      </collision>
+
+      <visual name="cell_nn_visual">
+        <pose>-0.015 -0.015 0 0 0 0</pose>
+        <geometry>
+          <mesh><uri>package://so101_description/meshes/socket_cell_blind_hole.stl</uri></mesh>
+        </geometry>
+        <material>
+          <ambient>0.62 0.30 0.06 1.0</ambient>
+          <diffuse>0.62 0.30 0.06 1.0</diffuse>
+          <specular>0.5 0.5 0.5 1.0</specular>
+        </material>
+      </visual>
+      <collision name="cell_nn_collision">
+        <pose>-0.015 -0.015 0 0 0 0</pose>
+        <geometry>
+          <mesh><uri>package://so101_description/meshes/socket_cell_blind_hole.stl</uri></mesh>
+        </geometry>
+      </collision>
+    </link>
+  </model>
+</sdf>
