@@ -9,14 +9,14 @@
     <!--JOINTS: When a joint is specified, the child link of that joint (which will always exist) is automatically included-->
     <!--CHAINS: When a chain is specified, all the links along the chain (including endpoints) are included in the group. Additionally, all the joints that are parents to included links are also included. This means that joints along the chain and the parent joint of the base link are included in the group-->
     <!--SUBGROUPS: Groups can also be formed by referencing to already defined group names-->
-    <group name="lef_arm">
+    <group name="left_arm">
         <chain base_link="world" tip_link="left_moving_jaw_so101_v1_link"/>
     </group>
     <group name="right_arm">
         <chain base_link="world" tip_link="right_moving_jaw_so101_v1_link"/>
     </group>
     <group name="both_arms">
-        <group name="lef_arm"/>
+        <group name="left_arm"/>
         <group name="right_arm"/>
     </group>
     <group name="left_gripper">
@@ -26,7 +26,7 @@
         <joint name="right_gripper"/>
     </group>
     <!--END EFFECTOR: Purpose: Represent information about an end effector.-->
-    <end_effector name="left_gripper" parent_link="left_moving_jaw_so101_v1_link" group="lef_arm"/>
+    <end_effector name="left_gripper" parent_link="left_moving_jaw_so101_v1_link" group="left_arm"/>
     <end_effector name="right_gripper" parent_link="right_moving_jaw_so101_v1_link" group="right_arm"/>
     <!--DISABLE COLLISIONS: By default it is assumed that any link of the robot could potentially come into collision with any other link in the robot. This tag disables collision checking between a specified pair of links. -->
     <disable_collisions link1="camera_link" link2="camera_mount_link" reason="Adjacent"/>
