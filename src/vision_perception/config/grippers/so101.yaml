@@ -1,0 +1,17 @@
+# SO-101 gripper, used by both arms ({side} = left or right).
+# Grasp poses in the object files are poses of tcp_link.
+name: so101
+tcp_link: "{side}_gripper_frame_link"
+# tcp_link is on the fixed jaw's inner face, not between the jaws. The
+# moving jaw closes towards it from -x. +z points out of the gripper.
+approach_axis: [0, 0, 1]
+joint: "{side}_gripper"
+open: 1.2
+close: -0.17          # joint limit, so the jaws keep squeezing the part
+# Holding something = the jaws stopped more than held_margin above `close`.
+# (Measured: -0.167 on nothing, +0.162 on the plug's knob.)
+held_margin: 0.05
+touch_links: ["{side}_gripper_link", "{side}_moving_jaw_so101_v1_link"]
+# Gap between the fingertips (mm) at each joint angle. For reference only;
+# the code doesn't read it.
+gap_mm: {-0.17: 2.5, 0.0: 16, 0.1: 24, 0.2: 31, 0.4: 45, 0.6: 60}

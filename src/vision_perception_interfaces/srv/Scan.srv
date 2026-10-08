@@ -1,0 +1,13 @@
+# Scan the table with the overhead camera and return object poses.
+string[] objects        # object names to look for; empty = every object in the registry
+# Optional hints: where each object should be (one per entry in `objects`,
+# or empty). A hinted object is the blob nearest its hint, fitted from the
+# hint. Use it for a part in the gripper or seated in its target.
+geometry_msgs/Pose[] hints
+float32 hint_radius     # metres; 0 = default 0.05
+---
+bool success            # true if every requested object was found with fitness >= the node's min_fitness
+string message
+vision_perception_interfaces/ObjectPose[] found
+string[] missing        # requested but not found (or found with too low fitness)
+float32 duration        # seconds spent in the pipeline

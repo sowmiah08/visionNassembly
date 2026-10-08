@@ -1,0 +1,12 @@
+# Frame: origin at the bottom face centre.
+name: socket
+sdf: package://so101_description/models/socket.sdf
+seg_label: 2
+prompt: "brown square block with four holes"
+static: true
+symmetry: {axis: [0, 0, 1], order: 4}
+grasps: []
+mate_frames:
+  # Where the plug's `pins` frame is when fully seated: the plug body rests
+  # on the block, so its pin tips are 5 mm above the socket's origin.
+  pin_holes: {xyz: [0.0, 0.0, 0.005], rpy: [0.0, 0.0, 0.0]}

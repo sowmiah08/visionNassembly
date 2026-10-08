@@ -40,6 +40,11 @@ def generate_launch_description():
         'socket.sdf'
     )
 
+    # Second assembly pair (peg into plate), on the right arm's side, where
+    # the camera can see it and the right arm can reach it.
+    peg_sdf_file = os.path.join(pkg_path, 'models', 'peg.sdf')
+    base_plate_sdf_file = os.path.join(pkg_path, 'models', 'base_plate.sdf')
+
     resource_path = os.pathsep.join([
         os.path.dirname(pkg_path),
         os.environ.get('GZ_SIM_RESOURCE_PATH', ''),
@@ -67,14 +72,9 @@ def generate_launch_description():
             output='screen'
         ),
 
-        # One spawner call for all 5 controllers instead of 5 separate
-        # processes (separate spawners race each other for the same
-        # controller_manager lock), plus a generous --switch-timeout: the
-        # default 5s switch timeout can be too short for the hardware
-        # interface to finish initializing under load, which fails the
-        # whole activation (seen in practice: joint_state_broadcaster
-        # failing to activate, which disconnects the whole arm from the TF
-        # tree since robot_state_publisher then never gets /joint_states).
+        # One spawner for all 5 controllers (separate spawners compete with
+        # each other), with a longer switch timeout: the default 5 s is
+        # sometimes too short under load, and then no joint states reach TF.
         Node(
             package='controller_manager',
             executable='spawner',
@@ -106,30 +106,20 @@ def generate_launch_description():
             output='screen'
         ),
 
-        # The plug is a genuine free rigid body (so it's actually pickable),
-        # not part of the robot URDF: spawned separately from its own SDF
-        # file at the same spot it used to occupy when welded to the table.
-        # World-frame position = (plug_x, plug_y, table_top_z) from
-        # dual_arm_workcell_gazebo.urdf.xacro, since table_link has no
-        # rotation or xy-offset relative to world.
+        # The plug is a separate free body, so it can be picked up.
+        # Position in the world: (x, y, table top height).
         Node(
             package='ros_gz_sim',
             executable='create',
             arguments=[
                 '-file', plug_sdf_file,
                 '-name', 'plug',
-                '-x', '-0.23', '-y', '0.08', '-z', '0.76',
+                '-x', '-0.12', '-y', '0.04', '-z', '0.76',
             ],
             output='screen'
         ),
 
-        # The socket is static (models/socket.sdf has <static>true</static>)
-        # but no longer welded into the robot URDF either, specifically so
-        # it can be repositioned by just editing the -x/-y/-z args below
-        # and relaunching -- no xacro edit or colcon rebuild needed.
-        # World-frame position = (socket_x, socket_y, table_top_z) from
-        # dual_arm_workcell_gazebo.urdf.xacro, same reasoning as the plug
-        # above.
+        # The socket is static (it never moves). Move it by changing -x/-y.
         Node(
             package='ros_gz_sim',
             executable='create',
@@ -141,10 +131,22 @@ def generate_launch_description():
             output='screen'
         ),
 
-        # Bridge every camera's images from Gazebo transport to ROS 2 so
-        # they can be viewed (rqt_image_view) or recorded (ros2 bag record).
-        # image_bridge also republishes each as compressed/theora/zstd
-        # (image_transport) variants automatically.
+        Node(
+            package='ros_gz_sim',
+            executable='create',
+            arguments=['-file', peg_sdf_file, '-name', 'peg',
+                       '-x', '0.12', '-y', '0.025', '-z', '0.76'],
+            output='screen'
+        ),
+        Node(
+            package='ros_gz_sim',
+            executable='create',
+            arguments=['-file', base_plate_sdf_file, '-name', 'base_plate',
+                       '-x', '0.14', '-y', '0.09', '-z', '0.76'],
+            output='screen'
+        ),
+
+        # Bridge the camera images from Gazebo to ROS 2.
         Node(
             package='ros_gz_image',
             executable='image_bridge',
@@ -153,14 +155,14 @@ def generate_launch_description():
                 '/right_wrist_camera/image_raw',
                 '/overhead_camera/rgb/image_raw',
                 '/overhead_camera/depth/image_raw',
+                '/overhead_camera/segmentation/labels_map',
+                '/overhead_camera/segmentation/colored_map',
             ],
             output='screen'
         ),
 
-        # image_bridge does not also bridge camera_info, so that goes through
-        # the generic parameter_bridge with explicit ROS <-> Gazebo type
-        # mappings. (The depth point cloud is intentionally not bridged --
-        # not needed, and heavier than the plain depth image.)
+        # camera_info, the depth point cloud and /clock go through
+        # parameter_bridge (image_bridge only handles images).
         Node(
             package='ros_gz_bridge',
             executable='parameter_bridge',
@@ -169,23 +171,15 @@ def generate_launch_description():
                 '/right_wrist_camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
                 '/overhead_camera/rgb/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
                 '/overhead_camera/depth/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
-                # Depth point cloud, generated automatically by the depth
-                # camera plugin as "<topic>/points" (topic set via <topic>
-                # in the sensor's xacro -- confirmed with `gz topic -l`).
+                # Point cloud made by the depth camera ("<topic>/points").
                 '/overhead_camera/depth/image_raw/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked',
-                # robot_state_publisher and rviz2 both run with
-                # use_sim_time: True, so without this their clocks never
-                # advance (stuck at t=0) and RViz's TF buffer silently fails
-                # to resolve any transform -- the robot never renders.
+                # Sim time: every node uses it, so /clock must be bridged.
                 '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
             ],
             output='screen'
         ),
 
-        # Ground truth for Phase 5 perception evaluation (never to be read
-        # as input to a vision pipeline): see ground_truth_pose_bridge.py
-        # for why this needs a small custom node rather than a standard
-        # ros_gz_bridge type mapping. Publishes /ground_truth/plug_pose.
+        # True object poses, for evaluation only: /ground_truth/<name>_pose.
         Node(
             package='so101_description',
             executable='ground_truth_pose_bridge',

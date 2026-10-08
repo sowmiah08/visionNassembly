@@ -1,26 +1,7 @@
 <?xml version="1.0"?>
 <!--
-  Standalone spare-peg model (peghole workcell only): spawned separately
-  from the robot URDF, rather than welded into it with a fixed joint, so
-  its world position can be changed by editing the spawn `-x`/`-y`/`-z`/
-  `-R`/`-P`/`-Y` args in the launch file -- no xacro edit or colcon
-  rebuild needed to reposition it. Used for both spare_peg_1 and
-  spare_peg_2 (same geometry), spawned twice with `-name` overriding the
-  model name each time.
-
-  <static>true</static>: spare pegs stay fixed/decorative by design --
-  only the functional peg (models/peg.sdf) and plug were asked to become
-  pickable, not every loose part in the scene (see
-  dual_arm_workcell_peghole_gazebo.urdf.xacro's original comment on this).
-
-  Geometry matches the `peg` xacro macro in assembly_objects.urdf.xacro
-  as instantiated for the spare pegs: radius 0.007 m, length 0.035 m
-  (smaller than the functional peg's 0.009 x 0.05 m). Mass/inertia are
-  carried over unchanged from the macro's fixed values (mass = 0.02 kg,
-  diagonal inertia 1e-6) -- not geometrically recomputed for this radius/
-  length, matching the original macro's behavior exactly; inert either
-  way since the model is static. Link origin matches the macro's
-  convention (bottom tip at z=0).
+  Spare peg (peghole workcell only): a small static peg, radius 7 mm, 35 mm
+  long, shown lying in the parts tray. Spawned twice with different names.
 -->
 <sdf version="1.9">
   <model name="spare_peg">

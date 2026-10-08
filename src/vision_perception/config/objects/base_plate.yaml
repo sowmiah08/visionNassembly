@@ -1,0 +1,13 @@
+# Frame: origin at the bottom face centre, which is also the hole centre.
+# 100 x 70 x 6 mm plate with a 12 mm-radius hole.
+name: base_plate
+sdf: package://so101_description/models/base_plate.sdf
+seg_label: 4
+prompt: "flat light grey plate with a round hole"
+static: true
+symmetry: {axis: [0, 0, 1], order: 2}
+grasps: []
+mate_frames:
+  # The peg stands on the table inside the hole, so its bottom frame
+  # matches the plate's frame.
+  hole: {xyz: [0.0, 0.0, 0.0], rpy: [0.0, 0.0, 0.0]}

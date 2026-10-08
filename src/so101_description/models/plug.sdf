@@ -1,47 +1,17 @@
 <?xml version="1.0"?>
 <!--
-  Standalone, freely-movable 4-pin plug model: spawned separately from the
-  robot URDF (via `ros2 run ros_gz_sim create -file plug.sdf`) rather than
-  welded into it with a fixed joint, so it is a genuine free rigid body the
-  gripper can actually pick up. Geometry matches the `plug` xacro macro in
-  assembly_objects.urdf.xacro (box body + 4 cylindrical pins + door-knob
-  grip), origin at the pins' bottom tips.
-
-  Mass, center of mass, and inertia are a real composite of the actual
-  sub-shapes (not a placeholder), all at PLA density (1240 kg/m^3): the real
-  parts will be 3D-printed, not milled from aluminum/steel/brass as first
-  assumed. Each part's own solid-primitive inertia (box/cylinder/sphere
-  formula) is combined about the composite center of mass via the parallel
-  axis theorem: I_total = sum( I_cm_i + m_i * (|d_i|^2 * Identity - d_i (x)
-  d_i) ), d_i = part_i's CoM minus the composite CoM. Computed result:
-  mass = 0.06492 kg, CoM = (0, 0, 0.02982), Ixx = Iyy = 2.0305e-05,
-  Izz = 2.0762e-05 (off-diagonal terms are exactly zero thanks to the
-  4-fold pin symmetry and the body/knob being on-axis). The <inertial><pose>
-  below is set to that CoM, per SDF's requirement that the inertial frame
-  origin be the link's actual center of mass.
-
-  Note: this is solid-PLA mass (no infill), which comes to ~65 g rather
-  than the ~40 g ballpark for a real FDM print: the 14mm knob sphere alone
-  accounts for ~14 g of that. Real prints are usually ~15-20% infill, not
-  solid; switch to that if you want the closer, infill-adjusted figure.
-
-  Friction mu/mu2 = 1.0 on every collision surface, per the project's
-  "high friction for pickable parts" requirement.
-
-  Ground truth: no plugin is attached here. Gazebo's gz-sim-pose-publisher-
-  system plugin only reports a link's pose relative to its own model (which
-  is trivially identity for a single-link free body like this), not the
-  model's actual world pose, and there is no "give me this model's world
-  pose" option on it. The real world pose instead comes from Gazebo's
-  built-in SceneBroadcaster (already loaded by the world file), consumed by
-  so101_description/ground_truth_pose_bridge.py (a small custom bridge
-  node, started by the launch file) which republishes it on ROS 2 as
-  /ground_truth/plug_pose (geometry_msgs/msg/PoseStamped). Phase 5 should
-  read that topic; it should never be fed to a vision pipeline as input,
-  since it bypasses perception entirely.
+  4-pin plug: a free body the gripper can pick up. 50 x 50 mm body, four
+  pins (radius 5 mm, 20 mm long) and a knob on top. Origin at the pin tips.
+  Mass and inertia are computed for solid PLA (0.065 kg, centre of mass
+  z = 0.0298). Friction 1.0 so it doesn't slip in the gripper.
 -->
 <sdf version="1.9">
   <model name="plug">
+    <!-- Ground-truth segmentation label (see segmentation_camera in
+         dual_arm_workcell_gazebo.urdf.xacro). Unique per object type. -->
+    <plugin filename="gz-sim-label-system" name="gz::sim::systems::Label">
+      <label>1</label>
+    </plugin>
     <link name="plug_link">
       <inertial>
         <pose>0 0 0.02982 0 0 0</pose>

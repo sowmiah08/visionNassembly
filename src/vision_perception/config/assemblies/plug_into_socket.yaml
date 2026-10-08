@@ -1,0 +1,11 @@
+name: plug_into_socket
+part: {object: plug, mate_frame: pins}
+target: {object: socket, mate_frame: pin_holes}
+approach_axis_world: [0, 0, -1]   # insert straight down
+pre_insert_offset: 0.03           # start this far above the mated pose
+speed_scale: 0.1
+strategy: straight                # not used yet; the spiral search always runs if blocked
+# Z proves the plug is in: it only gets down to the mated height with all
+# four pins in their holes. XY can be off by the pin clearance (2 mm) plus
+# the camera's ~1 mm bias, so xy_tol = 3 mm.
+success: {xy_tol: 0.003, z_tol: 0.002}

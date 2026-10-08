@@ -1,0 +1,9 @@
+name: peg_into_plate
+part: {object: peg, mate_frame: bottom}
+target: {object: base_plate, mate_frame: hole}
+approach_axis_world: [0, 0, -1]
+pre_insert_offset: 0.03
+speed_scale: 0.1
+strategy: straight
+# XY tolerance = 3 mm clearance (hole r 12 mm - peg r 9 mm) + ~1 mm camera bias.
+success: {xy_tol: 0.004, z_tol: 0.002}

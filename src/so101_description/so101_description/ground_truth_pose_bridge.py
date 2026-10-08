@@ -1,23 +1,11 @@
 #!/usr/bin/env python3
-"""Republishes true (ground-truth) world poses of freely-spawned objects
-(peg, plug, ...) from Gazebo to ROS 2, for Phase 5 perception evaluation.
+"""Publish the true world poses of free objects (plug, peg, ...) from Gazebo
+as /ground_truth/<name>_pose. For evaluation only: perception must never
+read these topics.
 
-Why this exists instead of a standard ros_gz_bridge type mapping: Gazebo's
-gz-sim-pose-publisher-system plugin only reports a link's pose relative to
-its own model, which is trivially identity for a single-link free body (no
-"give me this model's world pose" option exists on it). The actual
-world-frame pose for every model is already published by Gazebo's built-in
-SceneBroadcaster system on /world/<world>/dynamic_pose/info, but that
-message carries each model's pose only in a per-entry "name" field with no
-per-entry frame_id hint, and ros_gz_bridge's Pose_V -> tf2_msgs/msg/
-TFMessage conversion does not read that field, so every bridged transform's
-child_frame_id comes through empty: unusable for looking an object up by
-name. This node instead subscribes to that same Gazebo topic directly (via
-the gz-transport Python bindings) and republishes just the tracked model
-names as proper, individually named ROS 2 topics.
-
-This is ground truth: a shortcut around perception, not a substitute for it.
-Nothing that consumes camera images should ever subscribe to these topics.
+The standard bridge can't do this (its converted poses have no object
+names), so this node reads Gazebo's /world/<world>/dynamic_pose/info
+directly and republishes each tracked model by name.
 """
 
 import rclpy

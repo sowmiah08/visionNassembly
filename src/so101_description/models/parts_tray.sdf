@@ -1,24 +1,7 @@
 <?xml version="1.0"?>
 <!--
-  Standalone parts-tray model (peghole workcell only): spawned separately
-  from the robot URDF, rather than welded into it with a fixed joint, so
-  its world position can be changed by editing the spawn `-x`/`-y`/`-z`
-  args in the launch file -- no xacro edit or colcon rebuild needed to
-  reposition it.
-
-  <static>true</static>: it's a fixture holding the (decorative) spare
-  pegs, not a pickable part itself.
-
-  Geometry matches the `parts_tray` xacro macro in
-  assembly_objects.urdf.xacro (default params): an open tray (floor 0.14 x
-  0.10 x 0.004 m + a 0.03 m-high, 0.004 m-thick perimeter wall), built from
-  5 primitive boxes, same construction as assembly_fixture.sdf but deeper.
-  Link origin is at the floor's bottom face center -- the spare_peg models
-  sit inside it (see spare_peg.sdf and the spawn pose comments in the
-  launch file).
-
-  Mass/inertia here are a placeholder (not present in the original xacro
-  macro either) -- inert either way since the model is static.
+  Parts tray (peghole workcell only): an open tray that holds the spare pegs.
+  Static. Origin at the bottom face centre.
 -->
 <sdf version="1.9">
   <model name="parts_tray">

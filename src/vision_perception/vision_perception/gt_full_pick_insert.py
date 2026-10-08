@@ -1,37 +1,10 @@
 #!/usr/bin/env python3
-"""Full ground-truth pick-and-insert: picks up the plug using its live
-ground-truth pose and inserts it into the socket, with no perception
-involved. This is a pre-perception sanity check that the arm is
-physically capable of the assembly -- see gt_pick_insert.py for the
-Phase 1 (approach-only) version this supersedes.
+"""Pick the plug and insert it into the socket using the TRUE plug pose
+from Gazebo (no perception). This checks that the arm can physically do
+the task.
 
-IMPORTANT CAVEATS, read before running:
-
-1. The 'qos_overrides./clock.subscription.durability' abort (SIGABRT)
-   that used to hit MoveItPy + use_sim_time is fixed by pre-declaring
-   all four /clock QoS-override parameters in config_dict (see
-   run_worker() and PROJECT_LOG.md §8.1). main() still re-execs the
-   worker and retries, but only on SIGABRT, as insurance.
-
-2. so101_moveit_config/config/kinematics.yaml has rotation_scale: 0.5
-   for left_arm/right_arm (was 0.0, pure position-only IK, which made
-   every orientation-constrained goal here unsatisfiable). If insertion
-   keeps missing on yaw/tilt, raise it further. The 4-pin pattern is
-   square and radially symmetric, so alignment within +/-45 degrees of
-   any 90-degree multiple is enough.
-
-3. down_facing_pose()'s roll=pi convention is confirmed for SO-101: the
-   gripper's approach axis is +z of *_gripper_frame_link, so roll=pi
-   points it straight down (PROJECT_LOG.md §8.4). Note the tip frame
-   sits on the FIXED jaw's inner face, not between the jaws -- see the
-   GRASP_* constants below and §8.10.
-
-4. The socket's world pose is a hardcoded constant here, not read from
-   TF. Since the socket was converted to a standalone, independently
-   spawned static SDF model (see PROJECT_LOG.md §6), socket_link no
-   longer exists in the URDF/TF tree at all -- there's nothing to look
-   up. It never moves during a run, so its known launch-time spawn pose
-   (from workcell_gazebo.launch.py) *is* the ground truth.
+The socket pose is a constant: it's a static model spawned by
+workcell_gazebo.launch.py and never moves.
 """
 
 import copy
@@ -61,7 +34,7 @@ from moveit.planning import MoveItPy
 from moveit_configs_utils import MoveItConfigsBuilder
 
 
-# See caveat 1 above.
+# The worker is retried only if it aborts (see main()).
 MAX_ATTEMPTS = 10
 
 PLUG_POSE_TOPIC = "/ground_truth/plug_pose"
@@ -73,14 +46,13 @@ GRIPPER_JOINT = "left_gripper"
 GRIPPER_CONTROLLER = "so101_left_gripper_controller"
 TOUCH_LINKS = ["left_gripper_link", "left_moving_jaw_so101_v1_link"]
 
-# Socket's fixed world pose -- see caveat 4 above. Matches the -x/-y/-z
-# spawn args for "socket" in workcell_gazebo.launch.py.
+# Socket pose: must match its spawn position in workcell_gazebo.launch.py.
 SOCKET_X = 0.0
 SOCKET_Y = 0.10
 SOCKET_Z = 0.76
 SOCKET_YAW = 0.0
 
-# ---- Plug/socket geometry, from assembly_objects.urdf.xacro and plug.sdf ----
+# Plug and socket sizes (from plug.sdf / socket.sdf), metres.
 PIN_LENGTH = 0.02
 BODY_Z = 0.012
 PLUG_BODY_SIZE = 0.05
@@ -89,22 +61,16 @@ KNOB_NECK_H = 0.012
 KNOB_HEAD_RADIUS = 0.014
 SOCKET_BLOCK_HEIGHT = 0.025  # 0.022 m pocket depth + 0.003 m solid floor
 
-# Where the gripper holds the plug. left_gripper_frame_link sits on the
-# FIXED jaw's inner face (tip-frame x ~ 0), not between the jaws, and the
-# moving jaw closes toward it from -x. The knob head (r=14mm) overhangs the
-# neck (r=6mm) by more than the fixed jaw can reach under, so no placement
-# lets either jaw touch the neck first (PROJECT_LOG.md §8.13): the knob is
-# gripped at the head's equator. During the descent the plug axis sits
-# GRASP_AXIS_OFFSET along tip -x so the fixed jaw comes down beside the
-# head instead of on top of it.
-GRASP_TIP_HEIGHT = 0.050     # tip above the plug's base (head centre is at 0.062)
+# Grasp: the tip frame sits on the fixed jaw, not between the jaws, so the
+# tip is placed GRASP_AXIS_OFFSET to the side of the plug. The fixed jaw then
+# comes down beside the knob, and the jaws clamp the knob at its widest part.
+GRASP_TIP_HEIGHT = 0.050     # tip above the plug's base (head sphere centre is at 0.048)
 GRASP_AXIS_OFFSET = 0.016
 
-APPROACH_HEIGHT = 0.03       # the arm can only point straight down up to z~0.85
-INSERT_APPROACH_HEIGHT = 0.03  # must stay > PIN_LENGTH-0.002 so pins start above the pocket
-# Success check: the plug counts as inserted if its axis is within this of
-# the socket's and it isn't sitting higher than seated_z by more than this.
-# (Fully seated reads about -2mm: the body rests on the socket top.)
+APPROACH_HEIGHT = 0.03       # the arm can only point straight down up to z ~0.85
+INSERT_APPROACH_HEIGHT = 0.03  # pins must start above the pockets
+# Inserted = plug axis within XY tolerance of the socket and not higher than
+# seated_z + Z tolerance. Fully seated reads about -2 mm.
 INSERT_XY_TOLERANCE = 0.002
 INSERT_Z_TOLERANCE = 0.002
 INSERT_SPEED_SCALE = 0.1    # slow final descent
@@ -112,14 +78,11 @@ TRANSIT_SPEED_SCALE = 0.3
 CARTESIAN_MAX_STEP = 0.005
 
 GRIPPER_OPEN = 1.2
-# Joint lower limit. 0.0 still leaves a ~16mm fingertip gap; the moving
-# jaw meets the head around +0.19, so commanding the limit squeezes it.
-GRIPPER_CLOSED = -0.17
+GRIPPER_CLOSED = -0.17       # joint limit, so the jaws keep squeezing the knob
 GRIPPER_MOVE_SECONDS = 1.0
 
-# Pause before planning each move so /joint_states catches up with where
-# the last trajectory actually ended; planning straight away can start
-# from a stale state and trip the 0.01 rad allowed_start_tolerance.
+# Wait before planning, so the joint states are up to date. Otherwise the
+# plan can start from an old state and MoveIt refuses to run it.
 SETTLE_SECONDS = 0.5
 
 DOWN_ROLL = math.pi
@@ -143,11 +106,9 @@ def yaw_from_quat(x, y, z, w):
 
 
 def nearest_quarter_turn(yaw, reference):
-    """Snap `yaw` to the closest multiple of 90 degrees from `reference`.
+    """Closest yaw to `yaw` that is `reference` plus a multiple of 90 degrees.
 
-    The plug's 4-pin pattern is square and radially symmetric, so any
-    90-degree rotation is an equally valid insertion -- this picks
-    whichever one needs the least rotation from the plug's current yaw.
+    The 4 pins form a square, so any 90-degree turn fits the socket.
     """
     n = round((yaw - reference) / (math.pi / 2))
     return reference + n * (math.pi / 2)
@@ -167,11 +128,9 @@ def down_facing_pose(x, y, z, yaw):
 
 
 def build_plug_collision_object(pose_stamped, object_id="plug"):
-    """Two-part collision shape for the plug, in its own frame (z up from
-    the pin tips): a box over pins + body + rosette, and a cylinder over
-    the neck + knob head. A single fat bounding cylinder (the original
-    version) swallowed the space beside the knob where the fixed jaw has
-    to go, so every grasp pose counted as a collision.
+    """Plug collision shape: a box for pins + body, a cylinder for the knob.
+
+    It must stay tight around the knob, because the fixed jaw goes beside it.
     """
     lower_h = PIN_LENGTH + BODY_Z + KNOB_ROSETTE_H            # 0.036
     knob_h = KNOB_NECK_H + 2 * KNOB_HEAD_RADIUS               # 0.040
@@ -201,18 +160,9 @@ def build_plug_collision_object(pose_stamped, object_id="plug"):
 
 
 class GtPickInsertHelper(Node):
-    """Everything moveit_py doesn't provide: the ground-truth pose topic,
-    the gripper trajectory action, and the raw /compute_cartesian_path
-    service. moveit_py has no Cartesian-path binding at all in this
-    Jazzy build (confirmed directly against the installed module), so
-    Cartesian segments go through the plain ROS service instead.
-
-    Deliberately NOT setting use_sim_time here: this node never compares
-    a message timestamp against its own clock, and having a second node
-    in the process alongside MoveItPy's own use_sim_time node was tested
-    and does not avoid the known crash anyway (see module docstring and
-    PROJECT_LOG.md §7.3) -- so there's no upside to it, only a second
-    node to keep track of.
+    """What MoveItPy doesn't provide: the ground-truth plug pose, the
+    gripper action, and straight-line (Cartesian) paths, which MoveItPy has
+    no Python API for, so they go through move_group's service.
     """
 
     def __init__(self):
@@ -285,8 +235,7 @@ class GtPickInsertHelper(Node):
 
         trajectory = RobotTrajectory(robot_model)
         trajectory.set_robot_trajectory_msg(robot_state, response.solution)
-        # The constructor binding takes no group, and TOTG refuses a
-        # trajectory with none ("planner did not set the group").
+        # Time parameterization needs the group, and the constructor can't set it.
         trajectory.joint_model_group_name = ARM_GROUP
         return trajectory
 
@@ -296,10 +245,12 @@ class GtPickInsertHelper(Node):
         return future.result()
 
     def _diagnose_cartesian_failure(self, request):
-        """/compute_cartesian_path only reports how far it got, not why it
-        stopped. Re-run it without collision checking: if that gets further,
-        the stop was a collision, so find the first colliding waypoint and
-        name the contacts; if not, IK couldn't follow the line."""
+        """Say why a straight-line path stopped: IK, or which bodies collide.
+
+        The service only says how far it got. If the path completes without
+        collision checking, the cause was a collision, and the first invalid
+        waypoint names the bodies.
+        """
         request.avoid_collisions = False
         response = self._call(self._cartesian_client, request)
         if response is None or response.fraction < 0.95:
@@ -341,13 +292,9 @@ def run_worker():
     )
     config_dict = moveit_config.to_dict()
     config_dict["use_sim_time"] = True
-    # Pre-declare every QoS-override parameter rclcpp's TimeSource creates
-    # for the /clock subscription (values = rclcpp::ClockQoS defaults).
-    # Otherwise they get declared lazily when the /clock sub is created,
-    # and if that happens after MoveIt's TrajectoryExecutionManager has
-    # registered its on-set-parameters callback (which rejects every name
-    # it doesn't own, with an empty reason), the declare throws and the
-    # process aborts. Already-declared params are just read back instead.
+    # Declare the /clock QoS parameters up front (default values). If they
+    # are declared later, MoveIt's parameter callback rejects them and the
+    # process aborts at random.
     config_dict["qos_overrides"] = {
         "/clock": {
             "subscription": {
@@ -360,10 +307,8 @@ def run_worker():
     }
 
     moveit_py_instance = MoveItPy(node_name="gt_full_pick_insert", config_dict=config_dict)
-    # MoveItPy's destructor segfaults ("Deleting MoveItCpp" is the last log
-    # line), and it runs as soon as this function's locals are released --
-    # turning every run, successful or not, into exit code -11. Holding a
-    # module-level reference keeps it alive until main() calls os._exit.
+    # MoveItPy crashes when it's destroyed. Keep a reference so it never is;
+    # main() exits with os._exit.
     _KEEP_ALIVE.append(moveit_py_instance)
     arm = moveit_py_instance.get_planning_component(ARM_GROUP)
     robot_model = moveit_py_instance.get_robot_model()
@@ -411,8 +356,7 @@ def run_worker():
             plug_pose_msg.pose.orientation.x, plug_pose_msg.pose.orientation.y,
             plug_pose_msg.pose.orientation.z, plug_pose_msg.pose.orientation.w)
 
-        # Tip x axis in world for a down-facing pose at this yaw; the plug
-        # axis goes GRASP_AXIS_OFFSET along -x from the tip.
+        # Tip x axis in the world for a down-facing pose at this yaw.
         grasp_dir_x, grasp_dir_y = math.cos(plug_yaw), math.sin(plug_yaw)
         grasp_x = plug_x + GRASP_AXIS_OFFSET * grasp_dir_x
         grasp_y = plug_y + GRASP_AXIS_OFFSET * grasp_dir_y
@@ -438,17 +382,14 @@ def run_worker():
                 f"(something under the jaws is in the way)")
         helper.move_gripper(GRIPPER_CLOSED)
 
-        # The world copy of the plug would collide with the gripper from
-        # here on; it's re-added below as an attached object instead.
+        # Remove the plug from the scene; it's added back attached to the gripper.
         with psm.read_write() as scene:
             scene.remove_all_collision_objects()
 
         cartesian_move(pick_approach_pose, "lift plug")
 
-        # Measure where the plug actually ended up in the hand, rather than
-        # assuming the planned grasp: closing slides/tilts it, and every
-        # later step (the attached collision shape, the insert pose) must
-        # use the real tip->plug offset.
+        # Measure where the plug really is in the hand: closing the gripper
+        # moves it a little, and the insert must use the real offset.
         time.sleep(SETTLE_SECONDS)
         held_msg = helper.wait_for_plug_pose()
         held = held_msg.pose
@@ -475,9 +416,8 @@ def run_worker():
             scene.process_attached_collision_object(attach)
 
         # ---- Insert ----
-        # Turn the whole hand about vertical so the held plug's yaw lands on
-        # the nearest valid socket orientation, then place the tip so the
-        # (rotated) tip->plug offset puts the plug axis on the socket axis.
+        # Turn the hand so the plug lines up with the socket, then place the
+        # tip so the plug's axis lands on the socket's axis.
         delta = nearest_quarter_turn(held_yaw, SOCKET_YAW) - held_yaw
         rot_x = math.cos(delta) * off_x - math.sin(delta) * off_y
         rot_y = math.sin(delta) * off_x + math.cos(delta) * off_y
@@ -518,16 +458,14 @@ def run_worker():
             raise RuntimeError("Insertion check failed: plug is not seated in the socket")
 
     finally:
-        # Not calling moveit_py_instance.shutdown() either, for the same
-        # segfault reason as _KEEP_ALIVE; main() leaves via os._exit.
+        # No moveit_py_instance.shutdown(): it crashes (see _KEEP_ALIVE).
         helper.destroy_node()
         rclpy.shutdown()
 
 
 def main():
     if "--worker" in sys.argv:
-        # os._exit skips interpreter teardown, which segfaults while
-        # destroying MoveItPy and would otherwise hide the real result.
+        # os._exit skips Python's cleanup, which would crash in MoveItPy.
         try:
             run_worker()
         except Exception:
@@ -538,22 +476,16 @@ def main():
         sys.stdout.flush()
         os._exit(0)
 
-    # Retry driver: re-exec this same file as a fresh subprocess each
-    # attempt, since the crash this works around is a process-level
-    # abort, not a catchable Python exception -- nothing inside this
-    # process can survive it, so the retry has to happen from outside.
-    # Works the same whether invoked as `python3 gt_full_pick_insert.py`
-    # or via `ros2 run vision_perception gt_full_pick_insert`, since
-    # both ultimately call this function.
+    # Run the worker in a new process each attempt, because the abort it
+    # guards against kills the whole process.
     for attempt in range(1, MAX_ATTEMPTS + 1):
         print(f"[gt_full_pick_insert] attempt {attempt}/{MAX_ATTEMPTS}")
         result = subprocess.run([sys.executable, __file__, "--worker"])
         if result.returncode == 0:
             break
         if result.returncode != -signal.SIGABRT:
-            # Only the qos_overrides abort (SIGABRT) is safe to retry. Any
-            # other failure may have left the plug in the gripper or
-            # moved, so a fresh attempt would start from the wrong state.
+            # Only an abort is safe to retry: after any other failure the
+            # plug may already be moved or in the gripper.
             print(f"[gt_full_pick_insert] attempt {attempt} failed "
                   f"(exit code {result.returncode}), not retrying.")
             sys.exit(1)

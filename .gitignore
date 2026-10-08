@@ -52,3 +52,6 @@ Thumbs.db
 src/so101_description/WORKCELL_GUIDE.md
 src/so101_description/MOVEIT_SETUP_GUIDE.md
 PROJECT_LOG.md
+
+# Downloaded model weights (SAM 2 checkpoints etc.)
+models/

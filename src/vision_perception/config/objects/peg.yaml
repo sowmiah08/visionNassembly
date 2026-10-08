@@ -1,0 +1,19 @@
+# Frame: origin at the bottom face centre, +z up the axis.
+name: peg
+sdf: package://so101_description/models/peg.sdf
+seg_label: 3
+prompt: "grey metal cylinder peg"
+static: false
+# A cylinder looks the same at every angle. 8 copies (45 deg apart) are
+# used for choosing a grasp.
+symmetry: {axis: [0, 0, 1], order: 8, continuous: true}
+grasps:
+  # The tip frame is on the fixed jaw, so it sits 11 mm to the side: the
+  # fixed jaw comes down 2 mm clear of the peg. 30 mm up, so the fingers
+  # stay above the plate when the peg is inserted.
+  - name: side
+    tcp_pose: {xyz: [0.011, 0.0, 0.030], rpy: [3.14159265, 0.0, 0.0]}
+    pregrasp_offset: 0.03
+    gripper: so101
+mate_frames:
+  bottom: {xyz: [0.0, 0.0, 0.0], rpy: [0.0, 0.0, 0.0]}

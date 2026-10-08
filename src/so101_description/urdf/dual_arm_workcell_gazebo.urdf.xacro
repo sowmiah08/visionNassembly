@@ -1,23 +1,11 @@
 <?xml version="1.0"?>
 <!--
-  Dual-arm assembly workcell (Gazebo Harmonic variant): same table, arms,
-  overhead camera and assembly objects as dual_arm_workcell.urdf.xacro, plus
-  ros2_control command/state interfaces and the gz_ros2_control plugin so it
-  can be spawned into Gazebo (mirrors the existing dual_arm_gazebo.urdf.xacro
-  pattern).
+  Dual-arm assembly workcell for Gazebo: the table, two SO-101 arms with
+  wrist cameras, the overhead camera gantry, ros2_control and the camera
+  sensors. MoveIt uses this file too.
 
-  The socket (4-pocket) is the only assembly object defined here, fixed to
-  the table. Its matching 4-pin plug is a genuine free rigid body instead,
-  spawned separately as models/plug.sdf by workcell_gazebo.launch.py so it
-  can actually be picked up, with its ground-truth pose bridged to ROS 2
-  for later perception evaluation. The earlier single-peg/hole-plate setup
-  (fixture, base plate, peg, parts tray) still exists, just moved out of the
-  active workcell into dual_arm_workcell_peghole_gazebo.urdf.xacro.
-
-  The wrist cameras are mounted physically (mesh + link + joint, via the
-  so101_*_arm_camera fragments) but intentionally have no gazebo sensor
-  block yet; only the already-existing overhead camera is wired up as a
-  sensor, to avoid building out a sensor pipeline that hasn't been asked for.
+  The parts (plug, socket, peg, base plate) are not in this file: they are
+  separate SDF models spawned by workcell_gazebo.launch.py.
 -->
 <robot name="so101_dual_arm_workcell" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
@@ -58,20 +46,12 @@
   <xacro:property name="cam_yaw"   value="${-pi/2}"/>
 
   <!-- ================= ASSEMBLY AREA ================= -->
-  <!-- Both the socket (models/socket.sdf, static) and the plug
-       (models/plug.sdf, free body) are spawned separately in
-       workcell_gazebo.launch.py, not part of this URDF, so the socket's
-       position can be changed by editing the launch file's spawn args,
-       without a xacro edit or colcon rebuild, while experimenting.
-       socket_x/socket_y/plug_x/plug_y are kept here only as documentation:
-       the launch file's spawn position (world frame: x=*_x, y=*_y,
-       z=table_top_z, since table_link has no rotation/xy-offset from
-       world) stays next to the property that used to define it, for the
-       same spot each used to occupy when welded to the table. -->
+  <!-- For reference only: the parts' spawn positions are set in
+       workcell_gazebo.launch.py, not here. -->
   <xacro:property name="socket_x" value="0.0"/>
   <xacro:property name="socket_y" value="0.10"/>
-  <xacro:property name="plug_x"   value="-0.23"/>
-  <xacro:property name="plug_y"   value="0.08"/>
+  <xacro:property name="plug_x"   value="-0.12"/>
+  <xacro:property name="plug_y"   value="0.04"/>
 
   <!-- ================= MATERIALS ================= -->
   <material name="bench_top_dark">
@@ -365,15 +345,8 @@
   <gazebo reference="camera_link">
     <sensor name="rgb_camera" type="camera">
       <topic>overhead_camera/rgb/image_raw</topic>
-      <!-- camera_link gets merged into table_link by Gazebo's URDF->SDF
-           conversion (it's connected to world through an unbroken chain of
-           fixed joints), so without this the frame_id stamped on outgoing
-           image/point-cloud messages would be a Gazebo-internal, merged
-           scoped name that TF doesn't know: not a frame
-           robot_state_publisher ever actually publishes. Pointing it at
-           camera_optical_frame (a real link, published as part of the URDF
-           TF tree) instead gives every message header a frame_id that's
-           actually resolvable. -->
+      <!-- Gazebo merges fixed-joint links, so without this the images would
+           carry a frame name that TF doesn't know. -->
       <gz_frame_id>camera_optical_frame</gz_frame_id>
       <update_rate>30</update_rate>
       <camera>
@@ -396,6 +369,22 @@
       </camera>
       <always_on>1</always_on>
     </sensor>
+
+    <!-- Ground-truth labels, pixel-aligned with the RGB and depth images.
+         Each part's SDF sets its label; everything else is background.
+         Used only for evaluation. -->
+    <sensor name="segmentation_camera" type="segmentation">
+      <topic>overhead_camera/segmentation</topic>
+      <gz_frame_id>camera_optical_frame</gz_frame_id>
+      <update_rate>30</update_rate>
+      <camera>
+        <segmentation_type>instance</segmentation_type>
+        <horizontal_fov>1.57</horizontal_fov>
+        <image><width>640</width><height>480</height></image>
+        <clip><near>0.05</near><far>5.0</far></clip>
+      </camera>
+      <always_on>1</always_on>
+    </sensor>
   </gazebo>
 
   <!-- Wrist cameras: simple UVC RGB webcams (no depth, matching the real
@@ -403,6 +392,12 @@
   <gazebo reference="left_wrist_camera_link">
     <sensor name="left_wrist_rgb_camera" type="camera">
       <topic>left_wrist_camera/image_raw</topic>
+      <gz_frame_id>left_wrist_camera_optical_frame</gz_frame_id>
+      <!-- Gazebo cameras look along +x, but this camera's lens points along
+           +z (down past the jaws). The pose turns the sensor to +z and moves
+           it 27 mm forward, just in front of the lens, so it doesn't see
+           the camera body. -->
+      <pose>0 0 0.027 0 -1.5708 0</pose>
       <update_rate>30</update_rate>
       <camera>
         <horizontal_fov>1.57</horizontal_fov>
@@ -417,6 +412,12 @@
   <gazebo reference="right_wrist_camera_link">
     <sensor name="right_wrist_rgb_camera" type="camera">
       <topic>right_wrist_camera/image_raw</topic>
+      <gz_frame_id>right_wrist_camera_optical_frame</gz_frame_id>
+      <!-- Gazebo cameras look along +x, but this camera's lens points along
+           +z (down past the jaws). The pose turns the sensor to +z and moves
+           it 27 mm forward, just in front of the lens, so it doesn't see
+           the camera body. -->
+      <pose>0 0 0.027 0 -1.5708 0</pose>
       <update_rate>30</update_rate>
       <camera>
         <horizontal_fov>1.57</horizontal_fov>

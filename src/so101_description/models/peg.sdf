@@ -1,34 +1,15 @@
 <?xml version="1.0"?>
 <!--
-  Standalone, freely-movable peg model: spawned separately from the robot
-  URDF (via `ros2 run ros_gz_sim create -file peg.sdf`) rather than welded
-  into it with a fixed joint, so it is a genuine free rigid body the gripper
-  can actually pick up.
-
-  Mass and inertia are computed for a solid PLA cylinder (radius 0.009 m,
-  length 0.05 m, density 1240 kg/m^3, matching the real 3D-printed part
-  rather than the steel originally assumed): mass = rho * pi * r^2 * h =
-  0.01578 kg, Ixx = Iyy = (1/12) m (3r^2 + h^2), Izz = (1/2) m r^2. Link
-  origin matches the original peg macro's convention (bottom tip at z=0),
-  so the inertial pose sits at the geometric center, z = length/2.
-
-  Friction mu/mu2 = 1.0 per the project's "high friction for pickable parts"
-  requirement.
-
-  Ground truth: no plugin is attached here. Gazebo's gz-sim-pose-publisher-
-  system plugin only reports a link's pose relative to its own model (which
-  is trivially identity for a single-link free body like this), not the
-  model's actual world pose, and there is no "give me this model's world
-  pose" option on it. The real world pose instead comes from Gazebo's
-  built-in SceneBroadcaster (already loaded by the world file), consumed by
-  so101_description/ground_truth_pose_bridge.py (a small custom bridge
-  node, started by the launch file) which republishes it on ROS 2 as
-  /ground_truth/peg_pose (geometry_msgs/msg/PoseStamped). Phase 5 should
-  read that topic; it should never be fed to a vision pipeline as input,
-  since it bypasses perception entirely.
+  Peg: a free body the gripper can pick up. Solid PLA cylinder, radius 9 mm,
+  length 50 mm (mass 0.0158 kg). Origin at the bottom face centre.
+  Friction 1.0 so it doesn't slip in the gripper.
 -->
 <sdf version="1.9">
   <model name="peg">
+    <!-- Ground-truth label for the segmentation camera. Unique per object type. -->
+    <plugin filename="gz-sim-label-system" name="gz::sim::systems::Label">
+      <label>3</label>
+    </plugin>
     <link name="peg_link">
       <inertial>
         <pose>0 0 0.025 0 0 0</pose>

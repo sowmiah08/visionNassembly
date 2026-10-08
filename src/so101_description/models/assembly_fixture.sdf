@@ -1,24 +1,7 @@
 <?xml version="1.0"?>
 <!--
-  Standalone assembly-fixture model (peghole workcell only): spawned
-  separately from the robot URDF, rather than welded into it with a fixed
-  joint, so its world position can be changed by editing the spawn
-  `-x`/`-y`/`-z` args in the launch file -- no xacro edit or colcon rebuild
-  needed to reposition it.
-
-  <static>true</static>: it's a fixture that locates the base plate, not a
-  pickable part.
-
-  Geometry matches the `assembly_fixture` xacro macro in
-  assembly_objects.urdf.xacro (default params): a shallow rimmed platform
-  (floor 0.12 x 0.09 x 0.006 m + a 0.01 m-high, 0.004 m-thick perimeter
-  lip), built from 5 primitive boxes. Link origin is at the floor's bottom
-  face center -- the base_plate model sits on top of it (see base_plate
-  .sdf and the spawn pose comment in the launch file).
-
-  Mass/inertia here are a placeholder (not present in the original xacro
-  macro either, since a static fixed-joint child doesn't need real values)
-  -- inert either way since the model is static.
+  Assembly fixture (peghole workcell only): a shallow rimmed platform that
+  holds the base plate. Static. Origin at the bottom face centre.
 -->
 <sdf version="1.9">
   <model name="assembly_fixture">

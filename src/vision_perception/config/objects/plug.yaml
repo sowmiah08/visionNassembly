@@ -1,0 +1,19 @@
+# Frame: origin at the pin tips, centred, +z up through the knob.
+name: plug
+sdf: package://so101_description/models/plug.sdf
+seg_label: 1                      # label plugin value in the SDF
+prompt: "orange square plug with a round gold knob"   # for a text-prompted model later
+static: false
+# 4 pins on a square: any 90-degree turn is the same pose.
+symmetry: {axis: [0, 0, 1], order: 4}
+grasps:
+  # Clamp the knob at its widest part (z = 0.048). The tip frame is on the
+  # fixed jaw, so it sits 16 mm to the side to let that jaw clear the knob.
+  # Pointing down (roll = pi). Copies for each symmetry are made automatically.
+  - name: knob_head
+    tcp_pose: {xyz: [0.016, 0.0, 0.050], rpy: [3.14159265, 0.0, 0.0]}
+    pregrasp_offset: 0.03         # metres back along the approach axis
+    gripper: so101
+# This frame must meet the target's mate frame when assembled.
+mate_frames:
+  pins: {xyz: [0.0, 0.0, 0.0], rpy: [0.0, 0.0, 0.0]}

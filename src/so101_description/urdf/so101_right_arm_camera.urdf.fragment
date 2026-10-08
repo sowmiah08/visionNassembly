@@ -507,5 +507,14 @@
     <parent link="right_wrist_camera_mount_link"/>
     <child link="right_wrist_camera_link"/>
   </joint>
+  <!-- Optical frame (z out of the lens, x right, y down) where the Gazebo
+       wrist sensor really is: 27 mm in front of the camera link, looking
+       along +z. Wrist images are stamped with this frame. -->
+  <link name="right_wrist_camera_optical_frame"/>
+  <joint name="right_wrist_camera_optical_joint" type="fixed">
+    <origin xyz="0 0 0.027" rpy="0 0 -1.5707963"/>
+    <parent link="right_wrist_camera_link"/>
+    <child link="right_wrist_camera_optical_frame"/>
+  </joint>
 
 </robot>

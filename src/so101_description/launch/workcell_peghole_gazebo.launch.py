@@ -287,11 +287,7 @@ def generate_launch_description():
             output='screen'
         ),
 
-        # Ground truth for Phase 5 perception evaluation (never to be read
-        # as input to a vision pipeline): see ground_truth_pose_bridge.py
-        # for why this needs a small custom node rather than a standard
-        # ros_gz_bridge type mapping. Publishes /ground_truth/peg_pose and
-        # /ground_truth/plug_pose.
+        # True object poses, for evaluation only: /ground_truth/<name>_pose.
         Node(
             package='so101_description',
             executable='ground_truth_pose_bridge',
